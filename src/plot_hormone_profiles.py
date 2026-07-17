@@ -29,8 +29,8 @@ for i in range(1, 8):
     ax1.set_title('Total Cortisol and Cortisone in Blood Plasma')
 
     # Plot free ISF cortisol and cortisone
-    ax2.plot(timesISF, mCORT, label='mCortisol', color='blue', marker='o')
-    ax2.plot(timesISF, mCortisone, label='mCortisone', color='red', marker='o')
+    ax2.plot(timesISF, mCORT, label='mCortisol', color='blue', marker='o', alpha=0.5)
+    ax2.plot(timesISF, mCortisone, label='mCortisone', color='red', marker='o', alpha=0.5)
     ax2.set_ylabel('nmol/L')
     ax2.set_title('Free Cortisol and Cortisone in ISF')
 
