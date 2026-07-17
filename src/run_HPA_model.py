@@ -1,23 +1,35 @@
 import numpy as np
 from matplotlib import pyplot as plt
 import math
+import json
 from ddeint import ddeint
 
-# Define parameters
-delay = 22.187837769999998
-k_c = 39.81554366
-k_a = 9.931204779
-gamma_a = 0.03059598562
-gamma_c = 0.0072256054
-m_a = 3.439156062
-m_c = 3.4071021349999997
-lambda_s = 2.941013892
-lambda_a = 9.324924679
-sigma = 0.7268412216
-t_s = 0
-h = 1
-alpha = 20.78240012
-num_days = 6
+# Define parameter config file path
+config_file = 'configs/mean_parameters.json'
+
+# Load config
+with open(config_file, 'r') as f:
+    config = json.load(f)
+
+# Get parameters from config
+suggested_params = config.get('parameters', {})
+fixed_params = config.get('fixed_params', {})
+num_days = config.get('num_days', 4)
+parameters = {**fixed_params, **suggested_params}
+
+h = parameters['h']
+k_a = parameters['k_a']
+k_c = parameters['k_c']
+alpha = parameters['alpha']
+delay = parameters['delay']
+t_s = parameters['t_s']
+gamma_a = parameters['gamma_a']
+gamma_c = parameters['gamma_c']
+sigma = parameters['sigma']
+m_a = parameters['m_a']
+m_c = parameters['m_c']
+lambda_a = parameters['lambda_a']
+lambda_s = parameters['lambda_s']
 
 # Create time array
 timesteps = 1440 * num_days
