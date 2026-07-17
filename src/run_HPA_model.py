@@ -71,11 +71,8 @@ ax2.set_ylabel('Cortisol concentration')
 
 for ax in [ax1, ax2]:
     ax.set_xlim(0, times[-1])
-    ax.axvline(x=1440, color='gray', linestyle='--')
-    ax.axvline(x=1440*2, color='gray', linestyle='--')
-    ax.axvline(x=1440*3, color='gray', linestyle='--')
-    ax.axvline(x=1440*4, color='gray', linestyle='--')
-    ax.axvline(x=1440*5, color='gray', linestyle='--')
+    for i in range(num_days):
+        ax.axvline(x=1440*i, color='gray', linestyle='--') 
 
 crh_drive = []
 for t in times:
