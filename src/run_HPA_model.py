@@ -9,7 +9,7 @@ from methods.models import BaseHPAModel
 from methods import day_len
 
 # Define parameter config file path
-config_file = 'configs/mean_parameters.json'
+config_file = 'configs/test_parameters.json'
 
 # Load config
 with open(config_file, 'r') as f:
