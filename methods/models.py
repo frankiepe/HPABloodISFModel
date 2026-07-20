@@ -7,9 +7,11 @@ class BaseHPAModel(pints.ForwardModel):
     def __init__(self,
                  parameters,
                  num_days=6,
-                 days_to_keep=1):
+                 days_to_keep=1,
+                 step=0.1):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
+        self.step = step
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
         self.length_model = day_len
@@ -26,6 +28,7 @@ class BaseHPAModel(pints.ForwardModel):
             sigma = self.parameters['sigma']
         crh = lambda_a * math.e**(lambda_s*math.cos(2*math.pi*((t-t_s)/T_c)+sigma*math.cos(2*math.pi*((t-t_s)/T_c))))
         if symmetric:
+            # Arbitrary single cosine csh drive (for testing)
             crh = 70*math.cos(2*math.pi*(t/T_c))+75
         return crh
 
@@ -67,7 +70,7 @@ class BaseHPAModel(pints.ForwardModel):
         result = ddeint(model, initial_conditions, times)
 
         # Truncate to specified range
-        result = result[self.length_model*(self.num_days-self.days_to_keep):]
+        result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
 
         return result
 
