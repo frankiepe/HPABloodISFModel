@@ -39,32 +39,34 @@ print("Simulation complete.")
 plot_times = times[int((day_len/step)*(num_days-days_to_keep)):]
 
 # Plot output
-fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 7.5))
-ax1.plot(plot_times, result.T[0])
-ax2.plot(plot_times, result.T[1])
-ax3.plot(plot_times, result.T[2])
-ax3.set_xlabel('Time (minutes)')
-ax1.set_ylabel('ACTH concentration')
-ax2.set_ylabel('Cortisol concentration')
-ax3.set_ylabel('Cortisone concentration')
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+ax1.plot(plot_times, result.T[1], label='Cortisol', color='blue')
+ax1.plot(plot_times, result.T[2], label='Cortisone', color='red')
+ax2.plot(plot_times, result.T[0], label='ACTH', color='orange')
+ax1.set_ylabel('nmol/L')
+ax2.set_ylabel('pmol/L')
+ax2.set_xlabel('Time (minutes)')
 
-for ax in [ax1, ax2, ax3]:
+for ax in [ax1, ax2]:
     ax.set_xlim(plot_times[0], plot_times[-1])
     for i in range(days_to_keep):
         ax.axvline(x=day_len*(i+num_days-days_to_keep), color='gray', linestyle='--') 
 
 crh_drive = [dde_model.crh(t) for t in plot_times]
 
-ax4 = ax1.twinx()
-ax4.plot(plot_times, crh_drive, color = 'red', alpha = 0.4)
-ax4.set_ylabel('CRH drive', color = 'red')
+ax3 = ax1.twinx()
+ax3.plot(plot_times, crh_drive, color = 'grey', alpha = 0.4)
+ax3.set_ylabel('CRH drive', color = 'grey')
 
-ax5 = ax2.twinx()
-ax5.plot(plot_times, crh_drive, color = 'red', alpha = 0.4)
-ax5.set_ylabel('CRH drive', color = 'red')
+ax4 = ax2.twinx()
+ax4.plot(plot_times, crh_drive, color = 'grey', alpha = 0.4)
+ax4.set_ylabel('CRH drive', color = 'grey')
 
-ax6 = ax3.twinx()
-ax6.plot(plot_times, crh_drive, color = 'red', alpha = 0.4)
-ax6.set_ylabel('CRH drive', color = 'red')
+ax1.set_title('Total Cortisol and Cortisone in Blood Plasma')
+ax2.set_title('ACTH in Blood Plasma')
 
+ax1.legend()
+ax2.legend()
+
+plt.suptitle('Cortisol, Cortisone and ACTH Levels Over Time')
 plt.savefig(f'figures/model_output/HPAModelFEInter/test_sim.png')

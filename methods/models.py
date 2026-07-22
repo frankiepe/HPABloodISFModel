@@ -138,11 +138,9 @@ class HPAModelFEInter(pints.ForwardModel):
             self.parameters[key] = parameters[i]
 
         K_a = self.parameters['K_a']
-        K_f_a = self.parameters['K_f_a']
-        K_e = self.parameters['K_e']
-        K_f_e = self.parameters['K_f_e']
-        k_f = self.parameters['k_f']
-        k_e = self.parameters['k_e']
+        K_f = self.parameters['K_f']
+        k_1 = self.parameters['k_1']
+        k_2 = self.parameters['k_2']
         alpha = self.parameters['alpha']
         delay = self.parameters['delay']
         lambda_s = self.parameters['lambda_s']
@@ -160,15 +158,15 @@ class HPAModelFEInter(pints.ForwardModel):
             A, F, E = Y(t)
             F_delay = Y(t - delay)[1]
 
-            dAdt = -gamma_a*A + ((K_f_a**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f_a**m_a+F_delay**m_a)
-            dFdt = -gamma_f*F + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + (k_f*E)/(K_e+E)
-            dEdt = -gamma_e*E + (k_e*F)/(K_f_e+F)
+            dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
+            dFdt = -gamma_f*F + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_1*E - k_2*F
+            dEdt = -gamma_e*E - k_1*E + k_2*F
 
             return [dAdt, dFdt, dEdt]
 
         # Define initial conditions
         def initial_conditions(t):
-            return [5, 400, 40]
+            return [5, 250, 50]
         
         # Run the simulation     
         result = ddeint(model, initial_conditions, times)
