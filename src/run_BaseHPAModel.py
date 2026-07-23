@@ -28,15 +28,15 @@ if day_len/step != int(day_len/step):
 times = np.arange(0, timesteps, step)
 
 # Initialise model
-dde_model = BaseHPAModel(parameters=parameters, num_days=num_days, days_to_keep=days_to_keep, step=step)
+dde_model = BaseHPAModel(parameters=parameters, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
+
+# Get plotting times (some cropping may occur if day_len/step != whole number)
+plot_times = times[int((day_len/step)*(num_days-days_to_keep)):] - (day_len)*(num_days-days_to_keep)
 
 # Run the simulation
 print("Running simulation...")       
-result = dde_model.simulate(list(parameters.values()), times)
+result = dde_model.simulate(list(parameters.values()), plot_times)
 print("Simulation complete.")
-
-# Get plotting times (some cropping may occur if day_len/step != whole number)
-plot_times = times[int((day_len/step)*(num_days-days_to_keep)):]
 
 # Plot output
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 5))
@@ -49,7 +49,7 @@ ax2.set_ylabel('Cortisol concentration')
 for ax in [ax1, ax2]:
     ax.set_xlim(plot_times[0], plot_times[-1])
     for i in range(days_to_keep):
-        ax.axvline(x=day_len*(i+num_days-days_to_keep), color='gray', linestyle='--') 
+        ax.axvline(x=day_len*i, color='gray', linestyle='--') 
 
 crh_drive = [dde_model.crh(t) for t in plot_times]
 

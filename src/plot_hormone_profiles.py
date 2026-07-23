@@ -2,7 +2,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 for i in range(1, 8):
-    # Read processes data
+    # Read processed data
     dfISF = pd.read_csv(f'data/processed/HABS{i}_ISF.csv')
     dfBP = pd.read_csv(f'data/processed/HABS{i}_BP.csv')
 

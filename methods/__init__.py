@@ -16,3 +16,8 @@ PARAMETER_BOUNDARIES = {
     'gamma_a': (0.0231, 0.0693),
     'gamma_c': (0.00578, 0.00991)
 }
+
+model_dict = {1: 'BaseHPAModel',
+              2: 'HPAModelFEInter',
+              3: 'HPAModelFEInterCBGAlb',
+              4: 'HPAModelFEInterCBGAlbBloodISF'}

@@ -1,11 +1,13 @@
 import math
 import pints
 from ddeint import ddeint
+import numpy as np
 from . import day_len, PARAMETER_BOUNDARIES
 
 class BaseHPAModel(pints.ForwardModel):
     def __init__(self,
                  parameters,
+                 times,
                  num_days=6,
                  days_to_keep=1,
                  step=0.1):
@@ -14,6 +16,7 @@ class BaseHPAModel(pints.ForwardModel):
         self.step = step
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
 
@@ -67,12 +70,18 @@ class BaseHPAModel(pints.ForwardModel):
             return [5, 400]
         
         # Run the simulation     
-        result = ddeint(model, initial_conditions, times)
+        result = ddeint(model, initial_conditions, self.times)
 
         # Truncate to specified range
         result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
 
-        return result
+        # Find nearest indices
+        indices = np.searchsorted(self.times, times)
+
+        # Pull the filtered values
+        filtered_output = result[indices]
+
+        return filtered_output
 
     def n_outputs(self):
         return 2
@@ -83,14 +92,11 @@ class BaseHPAModel(pints.ForwardModel):
     def n_parameters(self):
         return self.n_parameters_value
 
-    def suggested_parameters(self):
-        return list(self.suggested_params_dict.values())
-
     def get_and_create_boundaries(self):
         lowerbounds = []
         upperbounds = []
 
-        for item in self.suggested_params_dict.keys():
+        for item in self.parameters.keys():
             lowerbound, upperbound = self.parameter_boundaries.get(item, (None, None))
             if lowerbound is None or upperbound is None: 
                 print(f'{item} has no defined bounds. Setting to default (0, 1000)')
