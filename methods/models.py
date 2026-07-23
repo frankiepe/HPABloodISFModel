@@ -110,6 +110,7 @@ class BaseHPAModel(pints.ForwardModel):
 class HPAModelFEInter(pints.ForwardModel):
     def __init__(self,
                  parameters,
+                 times,
                  num_days=6,
                  days_to_keep=1,
                  step=0.1):
@@ -118,6 +119,7 @@ class HPAModelFEInter(pints.ForwardModel):
         self.step = step
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
 
@@ -145,8 +147,8 @@ class HPAModelFEInter(pints.ForwardModel):
 
         K_a = self.parameters['K_a']
         K_f = self.parameters['K_f']
-        k_1 = self.parameters['k_1']
-        k_2 = self.parameters['k_2']
+        k_1 = self.parameters['k_1'] # new param
+        k_2 = self.parameters['k_2'] # new param
         alpha = self.parameters['alpha']
         delay = self.parameters['delay']
         lambda_s = self.parameters['lambda_s']
@@ -157,7 +159,7 @@ class HPAModelFEInter(pints.ForwardModel):
         sigma = self.parameters['sigma']
         gamma_a = self.parameters['gamma_a']
         gamma_f = self.parameters['gamma_f']
-        gamma_e = self.parameters['gamma_e']
+        gamma_e = self.parameters['gamma_e'] # new param
 
         # Define the DDE model
         def model(Y, t):
@@ -172,15 +174,21 @@ class HPAModelFEInter(pints.ForwardModel):
 
         # Define initial conditions
         def initial_conditions(t):
-            return [5, 250, 50]
+            return [5, 150, 25]
         
         # Run the simulation     
-        result = ddeint(model, initial_conditions, times)
+        result = ddeint(model, initial_conditions, self.times)
 
         # Truncate to specified range
         result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
 
-        return result
+        # Find nearest indices
+        indices = np.searchsorted(self.times, times)
+
+        # Pull the filtered values
+        filtered_output = result[indices]
+
+        return filtered_output
 
     def n_outputs(self):
         return 3

@@ -28,15 +28,15 @@ if day_len/step != int(day_len/step):
 times = np.arange(0, timesteps, step)
 
 # Initialise model
-dde_model = HPAModelFEInter(parameters=parameters, num_days=num_days, days_to_keep=days_to_keep, step=step)
+dde_model = HPAModelFEInter(parameters=parameters, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
+
+# Get plotting times (some cropping may occur if day_len/step != whole number)
+plot_times = times[int((day_len/step)*(num_days-days_to_keep)):] - (day_len)*(num_days-days_to_keep)
 
 # Run the simulation
 print("Running simulation...")       
-result = dde_model.simulate(list(parameters.values()), times)
+result = dde_model.simulate(list(parameters.values()), plot_times)
 print("Simulation complete.")
-
-# Get plotting times (some cropping may occur if day_len/step != whole number)
-plot_times = times[int((day_len/step)*(num_days-days_to_keep)):]
 
 # Plot output
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
