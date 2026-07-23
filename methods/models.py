@@ -199,14 +199,11 @@ class HPAModelFEInter(pints.ForwardModel):
     def n_parameters(self):
         return self.n_parameters_value
 
-    def suggested_parameters(self):
-        return list(self.suggested_params_dict.values())
-
     def get_and_create_boundaries(self):
         lowerbounds = []
         upperbounds = []
 
-        for item in self.suggested_params_dict.keys():
+        for item in self.parameters.keys():
             lowerbound, upperbound = self.parameter_boundaries.get(item, (None, None))
             if lowerbound is None or upperbound is None: 
                 print(f'{item} has no defined bounds. Setting to default (0, 1000)')
@@ -220,6 +217,7 @@ class HPAModelFEInter(pints.ForwardModel):
 class HPAModelFEInterCBGAlb(pints.ForwardModel):
     def __init__(self,
                  parameters,
+                 times,
                  num_days=6,
                  days_to_keep=1,
                  step=0.1):
@@ -228,6 +226,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         self.step = step
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
 
@@ -257,14 +256,14 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         K_f = self.parameters['K_f']
         k_1 = self.parameters['k_1']
         k_2 = self.parameters['k_2']
-        k_3 = self.parameters['k_3']
-        k_4 = self.parameters['k_4']
-        k_5 = self.parameters['k_5']
-        k_6 = self.parameters['k_6']
-        k_7 = self.parameters['k_7']
-        k_8 = self.parameters['k_8']
-        k_9 = self.parameters['k_9']
-        k_10 = self.parameters['k_10']
+        k_3 = self.parameters['k_3'] # new param
+        k_4 = self.parameters['k_4'] # new param
+        k_5 = self.parameters['k_5'] # new param
+        k_6 = self.parameters['k_6'] # new param
+        k_7 = self.parameters['k_7'] # new param
+        k_8 = self.parameters['k_8'] # new param
+        k_9 = self.parameters['k_9'] # new param
+        k_10 = self.parameters['k_10'] # new param
         alpha = self.parameters['alpha']
         delay = self.parameters['delay']
         lambda_s = self.parameters['lambda_s']
@@ -296,15 +295,21 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
 
         # Define initial conditions
         def initial_conditions(t):
-            return [5, 200, 40, 0, 0, 0, 0, 200, 500]
+            return [5, 50, 5, 0, 0, 0, 0, 200, 500]
         
         # Run the simulation     
-        result = ddeint(model, initial_conditions, times)
+        result = ddeint(model, initial_conditions, self.times)
 
         # Truncate to specified range
         result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
 
-        return result
+        # Find nearest indices
+        indices = np.searchsorted(self.times, times)
+
+        # Pull the filtered values
+        filtered_output = result[indices]
+
+        return filtered_output
 
     def n_outputs(self):
         return 9
@@ -315,14 +320,11 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
     def n_parameters(self):
         return self.n_parameters_value
 
-    def suggested_parameters(self):
-        return list(self.suggested_params_dict.values())
-
     def get_and_create_boundaries(self):
         lowerbounds = []
         upperbounds = []
 
-        for item in self.suggested_params_dict.keys():
+        for item in self.parameters.keys():
             lowerbound, upperbound = self.parameter_boundaries.get(item, (None, None))
             if lowerbound is None or upperbound is None: 
                 print(f'{item} has no defined bounds. Setting to default (0, 1000)')
