@@ -256,16 +256,18 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
 
         K_a = self.parameters['K_a']
         K_f = self.parameters['K_f']
-        k_1 = self.parameters['k_1']
-        k_2 = self.parameters['k_2']
+        k_mf = self.parameters['k_mf']
+        k_me = self.parameters['k_me']
+        V_f = self.parameters['V_f']
+        V_e = self.parameters['V_e']
+        k_1 = self.parameters['k_1'] # new param
+        k_2 = self.parameters['k_2'] # new param
         k_3 = self.parameters['k_3'] # new param
         k_4 = self.parameters['k_4'] # new param
         k_5 = self.parameters['k_5'] # new param
         k_6 = self.parameters['k_6'] # new param
         k_7 = self.parameters['k_7'] # new param
         k_8 = self.parameters['k_8'] # new param
-        k_9 = self.parameters['k_9'] # new param
-        k_10 = self.parameters['k_10'] # new param
         alpha = self.parameters['alpha']
         delay = self.parameters['delay']
         lambda_s = self.parameters['lambda_s']
@@ -284,20 +286,20 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
             F_delay = Y(t - delay)[1]
 
             dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
-            dFdt = -(gamma_f+k_2+k_3*CBG+k_5*Alb)*F + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_1*E + k_4*F_CBG + k_6*F_Alb
-            dEdt = -(gamma_e+k_1+k_7*CBG+k_9*Alb)*E + k_2*F + k_8*E_CBG + k_10*E_Alb
-            dF_CBGdt = k_3*F*CBG - k_4*F_CBG
-            dF_Albdt = k_5*F*Alb - k_6*F_Alb
-            dE_CBGdt = k_7*E*CBG - k_8*E_CBG
-            dE_Albdt = k_9*E*Alb - k_10*E_Alb
-            dCBGdt = k_4*F_CBG - k_3*F*CBG + k_8*E_CBG - k_7*E*CBG
-            dAlbdt = k_6*F_Alb - k_5*F*Alb + k_10*E_Alb - k_9*E*Alb
+            dFdt = -(gamma_f+k_1*CBG+k_3*Alb)*F + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_2*F_CBG + k_4*F_Alb + (V_e*E)/(k_me+E) - (V_f+F)/(k_mf+F)
+            dEdt = -(gamma_e+k_5*CBG+k_7*Alb)*E + k_6*E_CBG + k_8*E_Alb - (V_e*E)/(k_me+E) + (V_f+F)/(k_mf+F)
+            dF_CBGdt = k_1*F*CBG - k_2*F_CBG
+            dF_Albdt = k_3*F*Alb - k_4*F_Alb
+            dE_CBGdt = k_5*E*CBG - k_6*E_CBG
+            dE_Albdt = k_7*E*Alb - k_8*E_Alb
+            dCBGdt = k_2*F_CBG - k_1*F*CBG + k_6*E_CBG - k_5*E*CBG
+            dAlbdt = k_4*F_Alb - k_3*F*Alb + k_8*E_Alb - k_7*E*Alb
 
             return [dAdt, dFdt, dEdt, dF_CBGdt, dF_Albdt, dE_CBGdt, dE_Albdt, dCBGdt, dAlbdt]
 
         # Define initial conditions
         def initial_conditions(t):
-            return [5, 50, 5, 0, 0, 0, 0, 200, 500]
+            return [5, 10, 1, 0, 0, 0, 0, 20, 40000]
         
         # Run the simulation     
         result = ddeint(model, initial_conditions, self.times)
