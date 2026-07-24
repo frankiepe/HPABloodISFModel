@@ -342,6 +342,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
 class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
     def __init__(self,
                  parameters,
+                 times,
                  num_days=6,
                  days_to_keep=1,
                  step=0.1):
@@ -350,6 +351,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         self.step = step
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
 
@@ -377,6 +379,10 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
 
         K_a = self.parameters['K_a']
         K_f = self.parameters['K_f']
+        k_mf = self.parameters['k_mf']
+        k_me = self.parameters['k_me']
+        V_f = self.parameters['V_f']
+        V_e = self.parameters['V_e']
         k_1 = self.parameters['k_1']
         k_2 = self.parameters['k_2']
         k_3 = self.parameters['k_3']
@@ -385,8 +391,6 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         k_6 = self.parameters['k_6']
         k_7 = self.parameters['k_7']
         k_8 = self.parameters['k_8']
-        k_9 = self.parameters['k_9']
-        k_10 = self.parameters['k_10']
         k_BI = self.parameters['k_BI']
         V_B = self.parameters['V_B']
         V_I = self.parameters['V_I']
@@ -410,14 +414,14 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
             F_delay = Y(t - delay)[1]
 
             dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
-            dF_Bdt = -(gamma_f_b+k_2+k_3*CBG+k_5*Alb)*F_B + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_1*E_B + k_4*F_CBG + k_6*F_Alb - (k_BI/V_B)*(F_B-F_I)
-            dE_Bdt = -(gamma_e_b+k_1+k_7*CBG+k_9*Alb)*E_B + k_2*F_B + k_8*E_CBG + k_10*E_Alb - (k_BI/V_B)*(E_B-E_I)
-            dF_CBGdt = k_3*F_B*CBG - k_4*F_CBG
-            dF_Albdt = k_5*F_B*Alb - k_6*F_Alb
-            dE_CBGdt = k_7*E_B*CBG - k_8*E_CBG
-            dE_Albdt = k_9*E_B*Alb - k_10*E_Alb
-            dCBGdt = k_4*F_CBG - k_3*F_B*CBG + k_8*E_CBG - k_7*E_B*CBG
-            dAlbdt = k_6*F_Alb - k_5*F_B*Alb + k_10*E_Alb - k_9*E_B*Alb
+            dF_Bdt = -(gamma_f_b+k_1*CBG+k_3*Alb)*F_B + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_2*F_CBG + k_4*F_Alb + (V_e*E_B)/(k_me+E_B) - (V_f+F_B)/(k_mf+F_B) - (k_BI/V_B)*(F_B-F_I)
+            dE_Bdt = -(gamma_e_b+k_5*CBG+k_7*Alb)*E_B + k_6*E_CBG + k_8*E_Alb - (V_e*E_B)/(k_me+E_B) + (V_f+F_B)/(k_mf+F_B) - (k_BI/V_B)*(E_B-E_I)
+            dF_CBGdt = k_1*F_B*CBG - k_2*F_CBG
+            dF_Albdt = k_3*F_B*Alb - k_4*F_Alb
+            dE_CBGdt = k_5*E_B*CBG - k_6*E_CBG
+            dE_Albdt = k_7*E_B*Alb - k_8*E_Alb
+            dCBGdt = k_2*F_CBG - k_1*F_B*CBG + k_6*E_CBG - k_5*E_B*CBG
+            dAlbdt = k_4*F_Alb - k_3*F_B*Alb + k_8*E_Alb - k_7*E_B*Alb
             dF_Idt = (k_BI/V_I)*(F_B-F_I) - gamma_f_i*F_I
             dE_Idt = (k_BI/V_I)*(E_B-E_I) - gamma_e_i*E_I
 
@@ -425,15 +429,21 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
 
         # Define initial conditions
         def initial_conditions(t):
-            return [5, 200, 40, 0, 0, 0, 0, 200, 500, 0, 0]
+            return [5, 10, 1, 0, 0, 0, 0, 20, 40000, 0, 0]
         
         # Run the simulation     
-        result = ddeint(model, initial_conditions, times)
+        result = ddeint(model, initial_conditions, self.times)
 
         # Truncate to specified range
         result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
 
-        return result
+        # Find nearest indices
+        indices = np.searchsorted(self.times, times)
+
+        # Pull the filtered values
+        filtered_output = result[indices]
+
+        return filtered_output
 
     def n_outputs(self):
         return 11
@@ -444,14 +454,11 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
     def n_parameters(self):
         return self.n_parameters_value
 
-    def suggested_parameters(self):
-        return list(self.suggested_params_dict.values())
-
     def get_and_create_boundaries(self):
         lowerbounds = []
         upperbounds = []
 
-        for item in self.suggested_params_dict.keys():
+        for item in self.parameters.keys():
             lowerbound, upperbound = self.parameter_boundaries.get(item, (None, None))
             if lowerbound is None or upperbound is None: 
                 print(f'{item} has no defined bounds. Setting to default (0, 1000)')

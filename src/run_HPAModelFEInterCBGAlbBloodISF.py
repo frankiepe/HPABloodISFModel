@@ -22,21 +22,21 @@ days_to_keep = 1
 
 # Create time array
 timesteps = day_len * num_days
-step = 1 # stepsize must be sufficiently small for convergence of dde solver
+step = 0.1 # stepsize must be sufficiently small for convergence of dde solver
 if day_len/step != int(day_len/step):
     print(f"Warning: day_len ({day_len}) is not divisible by step ({step}). This may cause issues when plotting.")
 times = np.arange(0, timesteps, step)
 
 # Initialise model
-dde_model = HPAModelFEInterCBGAlbBloodISF(parameters=parameters, num_days=num_days, days_to_keep=days_to_keep, step=step)
+dde_model = HPAModelFEInterCBGAlbBloodISF(parameters=parameters, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
+
+# Get plotting times (some cropping may occur if day_len/step != whole number)
+plot_times = times[int((day_len/step)*(num_days-days_to_keep)):] - (day_len)*(num_days-days_to_keep)
 
 # Run the simulation
 print("Running simulation...")       
-result = dde_model.simulate(list(parameters.values()), times)
+result = dde_model.simulate(list(parameters.values()), plot_times)
 print("Simulation complete.")
-
-# Get plotting times (some cropping may occur if day_len/step != whole number)
-plot_times = times[int((day_len/step)*(num_days-days_to_keep)):]
 
 # Plot output
 fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12))
