@@ -147,8 +147,10 @@ class HPAModelFEInter(pints.ForwardModel):
 
         K_a = self.parameters['K_a']
         K_f = self.parameters['K_f']
-        k_1 = self.parameters['k_1'] # new param
-        k_2 = self.parameters['k_2'] # new param
+        k_mf = self.parameters['k_mf'] # new param
+        k_me = self.parameters['k_me'] # new param
+        V_f = self.parameters['V_f'] # new param
+        V_e = self.parameters['V_e'] # new param
         alpha = self.parameters['alpha']
         delay = self.parameters['delay']
         lambda_s = self.parameters['lambda_s']
@@ -167,8 +169,8 @@ class HPAModelFEInter(pints.ForwardModel):
             F_delay = Y(t - delay)[1]
 
             dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
-            dFdt = -gamma_f*F + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_1*E - k_2*F
-            dEdt = -gamma_e*E - k_1*E + k_2*F
+            dFdt = -gamma_f*F + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + (V_e*E)/(k_me+E) - (V_f+F)/(k_mf+F)
+            dEdt = -gamma_e*E - (V_e*E)/(k_me+E) + (V_f+F)/(k_mf+F)
 
             return [dAdt, dFdt, dEdt]
 
