@@ -20,4 +20,5 @@ PARAMETER_BOUNDARIES = {
 model_dict = {1: 'BaseHPAModel',
               2: 'HPAModelFEInter',
               3: 'HPAModelFEInterCBGAlb',
-              4: 'HPAModelFEInterCBGAlbBloodISF'}
+              4: 'HPAModelFEInterCBGAlbBloodISF',
+              5: 'HPAModelFEInterBothCBGAlbBloodISF'}
