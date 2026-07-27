@@ -42,8 +42,8 @@ class BaseHPAModel(pints.ForwardModel):
         for i, key in enumerate(param_keys):
             self.parameters[key] = parameters[i]
 
-        k_a = self.parameters['k_a']
-        k_c = self.parameters['k_c']
+        K_a = self.parameters['K_a']
+        K_c = self.parameters['K_c']
         alpha = self.parameters['alpha']
         delay = self.parameters['delay']
         lambda_s = self.parameters['lambda_s']
@@ -60,8 +60,8 @@ class BaseHPAModel(pints.ForwardModel):
             A, C = Y(t)
             C_delay = Y(t - delay)[1]
 
-            dAdt = -gamma_a*A + ((k_c**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(k_c**m_a+C_delay**m_a)
-            dCdt = -gamma_c*C + alpha*((A**m_c)/(k_a**m_c + A**m_c))
+            dAdt = -gamma_a*A + ((K_c**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_c**m_a+C_delay**m_a)
+            dCdt = -gamma_c*C + alpha*((A**m_c)/(K_a**m_c + A**m_c))
 
             return [dAdt, dCdt]
 
@@ -639,9 +639,9 @@ class HPAModelCRHSupp(pints.ForwardModel):
         for i, key in enumerate(param_keys):
             self.parameters[key] = parameters[i]
 
-        k_a = self.parameters['k_a']
-        k_c = self.parameters['k_c']
-        k_h = self.parameters['k_h']
+        K_a = self.parameters['K_a']
+        K_c = self.parameters['K_c']
+        K_h = self.parameters['K_h']
         alpha = self.parameters['alpha']
         delay_a = self.parameters['delay_a']
         delay_h = self.parameters['delay_h']
@@ -662,9 +662,9 @@ class HPAModelCRHSupp(pints.ForwardModel):
             C_delay_a = Y(t - delay_a)[1]
             C_delay_h = Y(t - delay_h)[1]
 
-            dAdt = -gamma_a*A + ((k_c**m_a)*H)/(k_c**m_a+C_delay_a**m_a)
-            dCdt = -gamma_c*C + alpha*((A**m_c)/(k_a**m_c + A**m_c))
-            dHdt = -gamma_h*H + ((k_h**m_h)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(k_h**m_h + C_delay_h**m_h)
+            dAdt = -gamma_a*A + ((K_c**m_a)*H)/(K_c**m_a+C_delay_a**m_a)
+            dCdt = -gamma_c*C + alpha*((A**m_c)/(K_a**m_c + A**m_c))
+            dHdt = -gamma_h*H + ((K_h**m_h)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_h**m_h + C_delay_h**m_h)
 
             return [dAdt, dCdt, dHdt]
 
