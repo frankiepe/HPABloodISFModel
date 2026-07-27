@@ -12,7 +12,8 @@ from methods import model_dict, day_len
 parser = argparse.ArgumentParser(description='Fit models to data.')
 parser.add_argument('-m', '--model', type = int, help='Select model for optimisation: ' \
                     '1: BaseHPAModel, 2: HPAModelFEInter, 3: HPAModelFEInterCBGAlb, ' \
-                    '4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF')
+                    '4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
+                    '6: HPAModelCRHSupp')
 parser.add_argument('-s', '--step', type=float, help='Step size for dde solver')
 args = parser.parse_args()
 
@@ -44,6 +45,8 @@ def run_model(m_n, step, days_to_keep=1):
         model = models.HPAModelFEInterCBGAlbBloodISF
     elif m_n == 5:
         model = models.HPAModelFEInterBothCBGAlbBloodISF
+    elif m_n == 6:
+        model = models.HPAModelCRHSupp
 
     dde_model = model(parameters=pars, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
 

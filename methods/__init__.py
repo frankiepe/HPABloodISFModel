@@ -21,4 +21,5 @@ model_dict = {1: 'BaseHPAModel',
               2: 'HPAModelFEInter',
               3: 'HPAModelFEInterCBGAlb',
               4: 'HPAModelFEInterCBGAlbBloodISF',
-              5: 'HPAModelFEInterBothCBGAlbBloodISF'}
+              5: 'HPAModelFEInterBothCBGAlbBloodISF',
+              6: 'HPAModelCRHSupp'}

@@ -2,10 +2,10 @@ from matplotlib import pyplot as plt
 from . import day_len, model_dict
 
 def plot_model_output(m_n, res, times, crh_drive, filename='model_output', days_to_keep=1):
-    if m_n <=3:
+    if m_n <=3 or m_n == 6:
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
         axes = [ax1, ax2]
-        if m_n == 1:
+        if m_n == 1 or m_n == 6:
             ax1.plot(times, res.T[1], label='Cortisol', color='blue')
             ax2.plot(times, res.T[0], label='ACTH', color='orange')
             ax1.set_title('Cortisol in Blood Plasma')
