@@ -15,6 +15,7 @@ parser.add_argument('-m', '--model', type = int, help='Select model for optimisa
                     '4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
                     '6: HPAModelCRHSupp')
 parser.add_argument('-s', '--step', type=float, help='Step size for dde solver')
+parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
 args = parser.parse_args()
 
 def run_model(m_n, step, days_to_keep=1):
@@ -55,7 +56,7 @@ def run_model(m_n, step, days_to_keep=1):
 
     # Run the simulation
     print("Running simulation...")       
-    result = dde_model.simulate(list(pars.values()), plot_times)
+    result = dde_model.simulate(list(pars.values()), plot_times, fitting=False)
     print("Simulation complete.")
 
     # Get CRH drive
@@ -66,5 +67,10 @@ def run_model(m_n, step, days_to_keep=1):
 if __name__ == "__main__":
     m_n = args.model
     step = args.step # must be sufficiently small to ensure dde solver converges (i.e. <=0.1)
+    outdir = args.outdir
+    if not os.path.exists(f'output/{outdir}'):
+        os.makedirs(f'output/{outdir}')
+        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots')
+
     res, times, crh_drive = run_model(m_n, step)
-    plotting.plot_model_output(m_n, res, times, crh_drive, filename='model_output', days_to_keep=1)
+    plotting.plot_model_output(m_n, res, times, crh_drive, outdir=outdir, filename=f'model_output_step{step}', days_to_keep=1)

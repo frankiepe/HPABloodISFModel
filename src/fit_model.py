@@ -6,6 +6,7 @@ import pints
 import pandas as pd
 import numpy as np
 import json
+import csv
 import argparse
 import methods.models as models
 import methods.classes as mc
@@ -21,9 +22,10 @@ parser.add_argument('-m', '--model', type = int, help='Select model for optimisa
 parser.add_argument('-i', '--ind', type = int, help='Select data index')
 parser.add_argument('-w', '--warmup', type = int, default=4, help='No. of days of warmup (to reach steady state)')
 parser.add_argument('-s', '--step', type=float, default=0.1, help='Step size for dde solver (must be sufficiently small for convergence)')
+parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
 args = parser.parse_args()
 
-def get_pars(m_n, d_n, warmup, step):
+def get_pars(m_n, d_n, warmup, step, outdir):
     # Get config file
     init_pars_file = f'configs/{model_dict[m_n]}/test_parameters.json'
 
@@ -107,10 +109,10 @@ def get_pars(m_n, d_n, warmup, step):
     # Get CRH drive
     crh_drive = [dde_model.crh(t) for t in times[int((day_len*warmup)/step):]]
 
-    plotting.plot_model_output(m_n, res_init, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, 
+    plotting.plot_model_output(m_n, res_init, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, outdir=outdir,
                                filename=f'model_init_output_ind{d_n}_step{step}', days_to_keep=1, plot_data=True, d_n=d_n)
 
-    opt.set_max_iterations(10)
+    opt.set_max_iterations(5)
     opt.set_log_interval(iters=10, warm_up=5)
     opt.set_function_tolerance(iterations=20, threshold=1e-2)
 
@@ -120,7 +122,7 @@ def get_pars(m_n, d_n, warmup, step):
 
     res_fit = dde_model.simulate(p, times, fitting=False)
 
-    plotting.plot_model_output(m_n, res_fit, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, 
+    plotting.plot_model_output(m_n, res_fit, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, outdir=outdir,
                                filename=f'model_fit_output_ind{d_n}_step{step}', days_to_keep=1, plot_data=True, d_n=d_n)
 
     return p, s 
@@ -130,7 +132,17 @@ if __name__ == "__main__":
     d_n = args.ind
     warmup = args.warmup
     step = args.step
-
-    pars, sc = get_pars(m_n, d_n, warmup, step)
-    print(pars)
-    print(sc)
+    outdir = args.outdir
+    repeats = 1 #todo
+    if not os.path.exists(f'output/{outdir}'):
+        os.makedirs(f'output/{outdir}')
+        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/fits')
+        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots')
+        
+    pars, sc = get_pars(m_n, d_n, warmup, step, outdir)
+    
+    with open(f"output/{outdir}/{model_dict[m_n]}/fits/fit_step{step}.csv", 'w') as f:
+        f.write('"rep","pars","score"')
+        f.write("\n")
+        writer = csv.writer(f)
+        writer.writerows(zip(np.arange(1, repeats+1, 1), [pars], [sc]))

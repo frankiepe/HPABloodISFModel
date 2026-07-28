@@ -1,9 +1,10 @@
 from matplotlib import pyplot as plt
 import methods.data_processing as dp
 import pandas as pd
+import os
 from . import day_len, model_dict
 
-def plot_model_output(m_n, res, times, crh_drive, filename='model_output', days_to_keep=1, plot_data=False, d_n=1):
+def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filename='model_output', days_to_keep=1, plot_data=False, d_n=1):
     if m_n <=3 or m_n == 6:
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
         axes = [ax1, ax2]
@@ -85,4 +86,7 @@ def plot_model_output(m_n, res, times, crh_drive, filename='model_output', days_
 
     plt.suptitle('Corticosteroid and ACTH Levels Over Time')
 
-    plt.savefig(f'figures/model_output/{model_dict[m_n]}/{filename}.png')
+    savedir = f'output/' + outdir + f"/{model_dict[m_n]}/plots"
+    if not os.path.exists(savedir):
+        os.makedirs(savedir)
+    plt.savefig(f'{savedir}/{filename}.png')
