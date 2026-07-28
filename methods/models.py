@@ -19,6 +19,7 @@ class BaseHPAModel(pints.ForwardModel):
         self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+        self.set_fix_parameters({})
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if t_s is None: 
@@ -41,6 +42,9 @@ class BaseHPAModel(pints.ForwardModel):
         param_keys = list(self.parameters.keys())
         for i, key in enumerate(param_keys):
             self.parameters[key] = parameters[i]
+
+        # Update fix parameters
+        self._set_fix_parameters(self._fix_parameters)
 
         K_a = self.parameters['K_a']
         K_c = self.parameters['K_c']
@@ -69,7 +73,7 @@ class BaseHPAModel(pints.ForwardModel):
         def initial_conditions(t):
             return [5, 400]
         
-        # Run the simulation     
+        # Run the simulation  
         result = ddeint(model, initial_conditions, self.times)
 
         # Truncate to specified range
@@ -84,6 +88,15 @@ class BaseHPAModel(pints.ForwardModel):
             result = filtered_output
 
         return result
+
+    def set_fix_parameters(self, parameters):
+        # Set/update parameters to a fixed value
+        self._fix_parameters = parameters
+
+    def _set_fix_parameters(self, parameters):
+        # Call to set parameters to a fixed value
+        for p in parameters.keys():
+            self.parameters[p] = parameters[p]
 
     def n_outputs(self):
         return 2
@@ -124,6 +137,7 @@ class HPAModelFEInter(pints.ForwardModel):
         self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+        self.set_fix_parameters({})
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if t_s is None: 
@@ -146,6 +160,9 @@ class HPAModelFEInter(pints.ForwardModel):
         param_keys = list(self.parameters.keys())
         for i, key in enumerate(param_keys):
             self.parameters[key] = parameters[i]
+
+        # Update fix parameters
+        self._set_fix_parameters(self._fix_parameters)
 
         K_a = self.parameters['K_a']
         K_f = self.parameters['K_f']
@@ -196,6 +213,15 @@ class HPAModelFEInter(pints.ForwardModel):
 
         return result
 
+    def set_fix_parameters(self, parameters):
+        # Set/update parameters to a fixed value
+        self._fix_parameters = parameters
+
+    def _set_fix_parameters(self, parameters):
+        # Call to set parameters to a fixed value
+        for p in parameters.keys():
+            self.parameters[p] = parameters[p]
+
     def n_outputs(self):
         return 3
 
@@ -235,6 +261,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+        self.set_fix_parameters({})
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if t_s is None: 
@@ -257,6 +284,9 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         param_keys = list(self.parameters.keys())
         for i, key in enumerate(param_keys):
             self.parameters[key] = parameters[i]
+
+        # Update fix parameters
+        self._set_fix_parameters(self._fix_parameters)
 
         K_a = self.parameters['K_a']
         K_f = self.parameters['K_f']
@@ -321,6 +351,15 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
 
         return result
 
+    def set_fix_parameters(self, parameters):
+        # Set/update parameters to a fixed value
+        self._fix_parameters = parameters
+
+    def _set_fix_parameters(self, parameters):
+        # Call to set parameters to a fixed value
+        for p in parameters.keys():
+            self.parameters[p] = parameters[p]
+
     def n_outputs(self):
         return 9
 
@@ -360,6 +399,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+        self.set_fix_parameters({})
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if t_s is None: 
@@ -382,6 +422,9 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         param_keys = list(self.parameters.keys())
         for i, key in enumerate(param_keys):
             self.parameters[key] = parameters[i]
+
+        # Update fix parameters
+        self._set_fix_parameters(self._fix_parameters)
 
         K_a = self.parameters['K_a']
         K_f = self.parameters['K_f']
@@ -453,6 +496,15 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
 
         return result
 
+    def set_fix_parameters(self, parameters):
+        # Set/update parameters to a fixed value
+        self._fix_parameters = parameters
+
+    def _set_fix_parameters(self, parameters):
+        # Call to set parameters to a fixed value
+        for p in parameters.keys():
+            self.parameters[p] = parameters[p]
+
     def n_outputs(self):
         return 11
 
@@ -492,6 +544,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+        self.set_fix_parameters({})
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if t_s is None: 
@@ -514,6 +567,9 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         param_keys = list(self.parameters.keys())
         for i, key in enumerate(param_keys):
             self.parameters[key] = parameters[i]
+
+        # Update fix parameters
+        self._set_fix_parameters(self._fix_parameters)
 
         K_a = self.parameters['K_a']
         K_f = self.parameters['K_f']
@@ -587,6 +643,15 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
 
         return result
 
+    def set_fix_parameters(self, parameters):
+        # Set/update parameters to a fixed value
+        self._fix_parameters = parameters
+
+    def _set_fix_parameters(self, parameters):
+        # Call to set parameters to a fixed value
+        for p in parameters.keys():
+            self.parameters[p] = parameters[p]
+
     def n_outputs(self):
         return 11
 
@@ -626,6 +691,7 @@ class HPAModelCRHSupp(pints.ForwardModel):
         self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+        self.set_fix_parameters({})
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if t_s is None: 
@@ -648,6 +714,9 @@ class HPAModelCRHSupp(pints.ForwardModel):
         param_keys = list(self.parameters.keys())
         for i, key in enumerate(param_keys):
             self.parameters[key] = parameters[i]
+
+        # Update fix parameters
+        self._set_fix_parameters(self._fix_parameters)
 
         K_a = self.parameters['K_a']
         K_c = self.parameters['K_c']
@@ -697,6 +766,15 @@ class HPAModelCRHSupp(pints.ForwardModel):
             result = filtered_output
 
         return result
+
+    def set_fix_parameters(self, parameters):
+        # Set/update parameters to a fixed value
+        self._fix_parameters = parameters
+
+    def _set_fix_parameters(self, parameters):
+        # Call to set parameters to a fixed value
+        for p in parameters.keys():
+            self.parameters[p] = parameters[p]
 
     def n_outputs(self):
         return 3

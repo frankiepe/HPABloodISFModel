@@ -23,9 +23,10 @@ parser.add_argument('-i', '--ind', type = int, help='Select data index')
 parser.add_argument('-w', '--warmup', type = int, default=4, help='No. of days of warmup (to reach steady state)')
 parser.add_argument('-s', '--step', type=float, default=0.1, help='Step size for dde solver (must be sufficiently small for convergence)')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
+parser.add_argument('-f', '--fixed_pars', type=str, nargs='*', help='Parameters to fix (i.e. not fit)')
 args = parser.parse_args()
 
-def get_pars(m_n, d_n, warmup, step, outdir):
+def get_pars(m_n, d_n, warmup, step, outdir, fixed_pars):
     # Get config file
     init_pars_file = f'configs/{model_dict[m_n]}/test_parameters.json'
 
@@ -69,12 +70,15 @@ def get_pars(m_n, d_n, warmup, step, outdir):
     # Define model
     dde_model = model(parameters=init_pars, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
 
+    # Fix parameters
+    dde_model.set_fix_parameters({i:init_pars[i] for i in fixed_pars})
+
     # Wrap in blood or ISF model for fitting
     if m_n in [1,2,3,6]:
         full_model = m_wrap(dde_model, init_pars, times)
     else:
         full_model1 = m_wrap1(dde_model, init_pars, times)
-        full_model2 = m_wrap2(dde_model, init_pars, times)
+        full_model2 = m_wrap2(dde_model, init_pars, times) 
 
     # Load data
     timesISF, timesBP, CORT, Cortisone, ACTH, mCORT, mCortisone = dp.get_data(d_n)
@@ -83,6 +87,7 @@ def get_pars(m_n, d_n, warmup, step, outdir):
     sISF = pd.to_datetime(pd.Series(timesISF))
     timesISF = (sISF - sISF.iloc[0]).dt.total_seconds() / 60
 
+    # Define Pints problem for optimisation
     if m_n in [1,6]:
         problem = pints.MultiOutputProblem(full_model, timesBP, np.array([ACTH, CORT]).T)
         f = pints.MeanSquaredError(problem)
@@ -99,48 +104,71 @@ def get_pars(m_n, d_n, warmup, step, outdir):
     # Set up model boundaries
     bounds = dde_model.get_and_create_boundaries()
 
+    # Get parameter initialisation
     q0 = list(init_pars.values())
 
+    # Define Pints optimiser
     opt = pints.OptimisationController(
             f, q0, boundaries=bounds, method=pints.CMAES)
+    opt.set_max_iterations(10)
+    opt.set_log_interval(iters=10, warm_up=10)
+    opt.set_function_tolerance(iterations=20, threshold=1e-2)
 
+    # Simulate initial parameterisation
     res_init = dde_model.simulate(q0, times, fitting=False)
 
     # Get CRH drive
     crh_drive = [dde_model.crh(t) for t in times[int((day_len*warmup)/step):]]
 
+    # Plot initial parameterisation
     plotting.plot_model_output(m_n, res_init, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, outdir=outdir,
                                filename=f'model_init_output_ind{d_n}_step{step}', days_to_keep=1, plot_data=True, d_n=d_n)
-
-    opt.set_max_iterations(5)
-    opt.set_log_interval(iters=10, warm_up=5)
-    opt.set_function_tolerance(iterations=20, threshold=1e-2)
 
     # Run optimisation
     print(f"Fitting {model_dict[m_n]}...")
     p, s = opt.run()
 
+    # Ensure fixed parameters are stored correctly
+    final_pars = init_pars.copy()
+    param_keys = list(init_pars.keys())
+    for i, key in enumerate(param_keys):
+        if key not in fixed_pars:
+            final_pars[key] = p[i]
+        else:
+            p[i] = init_pars[key]
+
+    # Simulate optimised parameterisation
     res_fit = dde_model.simulate(p, times, fitting=False)
 
+    # Plot optimised parameterisation
     plotting.plot_model_output(m_n, res_fit, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, outdir=outdir,
                                filename=f'model_fit_output_ind{d_n}_step{step}', days_to_keep=1, plot_data=True, d_n=d_n)
 
     return p, s 
 
 if __name__ == "__main__":
+    # read parsed variables
     m_n = args.model
     d_n = args.ind
     warmup = args.warmup
     step = args.step
     outdir = args.outdir
+    fixed_pars = args.fixed_pars
+
     repeats = 1 #todo
+
+    # Make directories if necessary
     if not os.path.exists(f'output/{outdir}'):
         os.makedirs(f'output/{outdir}')
+    if not os.path.exists(f'output/{outdir}/{model_dict[m_n]}/fits'):
         os.makedirs(f'output/{outdir}/{model_dict[m_n]}/fits')
+    if not os.path.exists(f'output/{outdir}/{model_dict[m_n]}/plots'):
         os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots')
-        
-    pars, sc = get_pars(m_n, d_n, warmup, step, outdir)
-    
+
+    # Perform fitting    
+    pars, sc = get_pars(m_n, d_n, warmup, step, outdir, fixed_pars)
+
+    # Save fitted parameters
     with open(f"output/{outdir}/{model_dict[m_n]}/fits/fit_step{step}.csv", 'w') as f:
         f.write('"rep","pars","score"')
         f.write("\n")
