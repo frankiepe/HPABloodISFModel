@@ -10,7 +10,8 @@ import argparse
 import methods.models as models
 import methods.classes as mc
 from methods import model_dict, day_len
-from matplotlib import pyplot as plt
+import methods.plotting as plotting
+import methods.data_processing as dp
 
 parser = argparse.ArgumentParser(description='Fit models to data.')
 parser.add_argument('-m', '--model', type = int, help='Select model for optimisation: ' \
@@ -18,9 +19,11 @@ parser.add_argument('-m', '--model', type = int, help='Select model for optimisa
                     '4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
                     '6: HPAModelCRHSupp')
 parser.add_argument('-i', '--ind', type = int, help='Select data index')
+parser.add_argument('-w', '--warmup', type = int, default=4, help='No. of days of warmup (to reach steady state)')
+parser.add_argument('-s', '--step', type=float, default=0.1, help='Step size for dde solver (must be sufficiently small for convergence)')
 args = parser.parse_args()
 
-def get_pars(m_n, d_n):
+def get_pars(m_n, d_n, warmup, step):
     # Get config file
     init_pars_file = f'configs/{model_dict[m_n]}/test_parameters.json'
 
@@ -30,12 +33,11 @@ def get_pars(m_n, d_n):
 
     # Get parameters from config
     init_pars = config.get('parameters', {})
-    num_days = 4
     days_to_keep = 1
+    num_days = warmup+days_to_keep
 
     # Create time array
     timesteps = day_len * num_days
-    step = 1 # stepsize must be sufficiently small for convergence of dde solver
     if day_len/step != int(day_len/step):
         print(f"Warning: day_len ({day_len}) is not divisible by step ({step}). This may cause issues when plotting.")
     times = np.arange(0, timesteps, step)
@@ -73,18 +75,7 @@ def get_pars(m_n, d_n):
         full_model2 = m_wrap2(dde_model, init_pars, times)
 
     # Load data
-    dfBP = pd.read_csv(f'data/processed/HABS{d_n}_BP.csv')
-    dfISF = pd.read_csv(f'data/processed/HABS{d_n}_ISF.csv')    
-    dfBP['datetime'] = pd.to_datetime(dfBP['Date'] + ' ' + dfBP['Time'], format='%d/%m/%Y %H:%M:%S', errors='coerce')
-    dfISF['datetime'] = pd.to_datetime(dfISF['Date'] + ' ' + dfISF['Time'], format='%d/%m/%Y %H:%M:%S', errors='coerce')
-    timesBP = dfBP['datetime']
-    timesISF = dfISF['datetime']
-    CORT = dfBP['Cortisol']
-    ACTH = dfBP['ACTH']
-    Cortisone = dfBP['Cortisone']
-    mCORT = dfISF['mCortisol']
-    mCortisone = dfISF['mCortisone']
-
+    timesISF, timesBP, CORT, Cortisone, ACTH, mCORT, mCortisone = dp.get_data(d_n)
     sBP = pd.to_datetime(pd.Series(timesBP))
     timesBP = (sBP - sBP.iloc[0]).dt.total_seconds() / 60
     sISF = pd.to_datetime(pd.Series(timesISF))
@@ -111,16 +102,15 @@ def get_pars(m_n, d_n):
     opt = pints.OptimisationController(
             f, q0, boundaries=bounds, method=pints.CMAES)
 
-    result = dde_model.simulate(q0, timesBP)
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 5))
-    ax1.plot(timesBP, result.T[0])
-    ax2.plot(timesBP, result.T[1])
-    ax2.plot(timesBP, CORT, marker = 'x', color = 'k')
-    ax1.plot(timesBP, ACTH, marker = 'x', color = 'k')
-    plt.savefig('before.png')
-    plt.close()
+    res_init = dde_model.simulate(q0, times, fitting=False)
 
-    opt.set_max_iterations(100)
+    # Get CRH drive
+    crh_drive = [dde_model.crh(t) for t in times[int((day_len*warmup)/step):]]
+
+    plotting.plot_model_output(m_n, res_init, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, 
+                               filename=f'model_init_output_ind{d_n}_step{step}', days_to_keep=1, plot_data=True, d_n=d_n)
+
+    opt.set_max_iterations(10)
     opt.set_log_interval(iters=10, warm_up=5)
     opt.set_function_tolerance(iterations=20, threshold=1e-2)
 
@@ -128,20 +118,19 @@ def get_pars(m_n, d_n):
     print(f"Fitting {model_dict[m_n]}...")
     p, s = opt.run()
 
-    result = dde_model.simulate(p, timesBP)
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 5))
-    ax1.plot(timesBP, result.T[0])
-    ax2.plot(timesBP, result.T[1])
-    ax2.plot(timesBP, CORT, marker = 'x', color = 'k')
-    ax1.plot(timesBP, ACTH, marker = 'x', color = 'k')
-    plt.savefig('after.png')
+    res_fit = dde_model.simulate(p, times, fitting=False)
+
+    plotting.plot_model_output(m_n, res_fit, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, 
+                               filename=f'model_fit_output_ind{d_n}_step{step}', days_to_keep=1, plot_data=True, d_n=d_n)
 
     return p, s 
 
 if __name__ == "__main__":
     m_n = args.model
     d_n = args.ind
+    warmup = args.warmup
+    step = args.step
 
-    pars, sc = get_pars(m_n, d_n)
+    pars, sc = get_pars(m_n, d_n, warmup, step)
     print(pars)
     print(sc)

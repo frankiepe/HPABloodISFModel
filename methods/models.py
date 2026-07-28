@@ -35,7 +35,7 @@ class BaseHPAModel(pints.ForwardModel):
             crh = 70*math.cos(2*math.pi*(t/T_c))+75
         return crh
 
-    def simulate(self, parameters, times):
+    def simulate(self, parameters, times, fitting=True):
         
         # Assign parameters
         param_keys = list(self.parameters.keys())
@@ -75,13 +75,15 @@ class BaseHPAModel(pints.ForwardModel):
         # Truncate to specified range
         result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
 
-        # Find nearest indices
-        indices = np.searchsorted(self.times, times)
+        if fitting:
+            # Find nearest indices
+            indices = np.searchsorted(self.times, times)
 
-        # Pull the filtered values
-        filtered_output = result[indices]
+            # Pull the filtered values
+            filtered_output = result[indices]
+            result = filtered_output
 
-        return filtered_output
+        return result
 
     def n_outputs(self):
         return 2
@@ -138,7 +140,7 @@ class HPAModelFEInter(pints.ForwardModel):
             crh = 70*math.cos(2*math.pi*(t/T_c))+75
         return crh
 
-    def simulate(self, parameters, times):
+    def simulate(self, parameters, times, fitting=True):
         
         # Assign parameters
         param_keys = list(self.parameters.keys())
@@ -184,13 +186,15 @@ class HPAModelFEInter(pints.ForwardModel):
         # Truncate to specified range
         result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
 
-        # Find nearest indices
-        indices = np.searchsorted(self.times, times)
+        if fitting:
+            # Find nearest indices
+            indices = np.searchsorted(self.times, times)
 
-        # Pull the filtered values
-        filtered_output = result[indices]
+            # Pull the filtered values
+            filtered_output = result[indices]
+            result = filtered_output
 
-        return filtered_output
+        return result
 
     def n_outputs(self):
         return 3
@@ -247,7 +251,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
             crh = 70*math.cos(2*math.pi*(t/T_c))+75
         return crh
 
-    def simulate(self, parameters, times):
+    def simulate(self, parameters, times, fitting=True):
         
         # Assign parameters
         param_keys = list(self.parameters.keys())
@@ -307,13 +311,15 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         # Truncate to specified range
         result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
 
-        # Find nearest indices
-        indices = np.searchsorted(self.times, times)
+        if fitting:
+            # Find nearest indices
+            indices = np.searchsorted(self.times, times)
 
-        # Pull the filtered values
-        filtered_output = result[indices]
+            # Pull the filtered values
+            filtered_output = result[indices]
+            result = filtered_output
 
-        return filtered_output
+        return result
 
     def n_outputs(self):
         return 9
@@ -370,7 +376,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
             crh = 70*math.cos(2*math.pi*(t/T_c))+75
         return crh
 
-    def simulate(self, parameters, times):
+    def simulate(self, parameters, times, fitting=True):
         
         # Assign parameters
         param_keys = list(self.parameters.keys())
@@ -437,13 +443,15 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         # Truncate to specified range
         result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
 
-        # Find nearest indices
-        indices = np.searchsorted(self.times, times)
+        if fitting:
+            # Find nearest indices
+            indices = np.searchsorted(self.times, times)
 
-        # Pull the filtered values
-        filtered_output = result[indices]
+            # Pull the filtered values
+            filtered_output = result[indices]
+            result = filtered_output
 
-        return filtered_output
+        return result
 
     def n_outputs(self):
         return 11
@@ -500,7 +508,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
             crh = 70*math.cos(2*math.pi*(t/T_c))+75
         return crh
 
-    def simulate(self, parameters, times):
+    def simulate(self, parameters, times, fitting=True):
         
         # Assign parameters
         param_keys = list(self.parameters.keys())
@@ -569,13 +577,15 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         # Truncate to specified range
         result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
 
-        # Find nearest indices
-        indices = np.searchsorted(self.times, times)
+        if fitting:
+            # Find nearest indices
+            indices = np.searchsorted(self.times, times)
 
-        # Pull the filtered values
-        filtered_output = result[indices]
+            # Pull the filtered values
+            filtered_output = result[indices]
+            result = filtered_output
 
-        return filtered_output
+        return result
 
     def n_outputs(self):
         return 11
@@ -632,7 +642,7 @@ class HPAModelCRHSupp(pints.ForwardModel):
             crh = 70*math.cos(2*math.pi*(t/T_c))+75
         return crh
 
-    def simulate(self, parameters, times):
+    def simulate(self, parameters, times, fitting=True):
         
         # Assign parameters
         param_keys = list(self.parameters.keys())
@@ -678,13 +688,15 @@ class HPAModelCRHSupp(pints.ForwardModel):
         # Truncate to specified range
         result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
 
-        # Find nearest indices
-        indices = np.searchsorted(self.times, times)
+        if fitting:
+            # Find nearest indices
+            indices = np.searchsorted(self.times, times)
 
-        # Pull the filtered values
-        filtered_output = result[indices]
+            # Pull the filtered values
+            filtered_output = result[indices]
+            result = filtered_output
 
-        return filtered_output
+        return result
 
     def n_outputs(self):
         return 3

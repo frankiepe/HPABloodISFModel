@@ -1,7 +1,9 @@
 from matplotlib import pyplot as plt
+import methods.data_processing as dp
+import pandas as pd
 from . import day_len, model_dict
 
-def plot_model_output(m_n, res, times, crh_drive, filename='model_output', days_to_keep=1):
+def plot_model_output(m_n, res, times, crh_drive, filename='model_output', days_to_keep=1, plot_data=False, d_n=1):
     if m_n <=3 or m_n == 6:
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
         axes = [ax1, ax2]
@@ -49,8 +51,31 @@ def plot_model_output(m_n, res, times, crh_drive, filename='model_output', days_
         ax2.set_title('Cortisol and Cortisone in ISF')
         ax3.set_title('ACTH in Blood Plasma')
 
+    if plot_data:
+        print(f"Plotting data for individual #{d_n}...")
+        timesISF, timesBP, CORT, Cortisone, ACTH, mCORT, mCortisone = dp.get_data(d_n)
+        sBP = pd.to_datetime(pd.Series(timesBP))
+        timesBP = (sBP - sBP.iloc[0]).dt.total_seconds() / 60
+        sISF = pd.to_datetime(pd.Series(timesISF))
+        timesISF = (sISF - sISF.iloc[0]).dt.total_seconds() / 60
+
+        if m_n in [1,2,6]:
+            ax1.plot(timesBP, CORT, label='Cortisol data', color='blue', marker='o')
+            ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
+            if m_n == 2:
+                ax1.plot(timesBP, Cortisone, label='Cortisone data', color='red', marker='o')
+        elif m_n in [3,4,5]:
+            ax1.plot(timesBP, CORT, label='Total Cortisol data', color='blue', marker='o')
+            ax1.plot(timesBP, Cortisone, label='Total Cortisone data', color='red', marker='o')
+            if m_n == 3:
+                ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
+            elif m_n == 4 or m_n == 5:
+                ax2.plot(timesISF, mCORT, label='Free Cortisol data', color='blue', marker='o', alpha=0.5)
+                ax2.plot(timesISF, mCortisone, label='Free Cortisone data', color='red', marker='o', alpha=0.5)
+                ax3.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
+
     for ax in axes:
-        ax.set_xlim(times[0], times[-1])
+        ax.set_xlim(list(times)[0], list(times)[-1])
         for i in range(days_to_keep):
             ax.axvline(x=day_len*i, color='gray', linestyle='--') 
         ax.legend()

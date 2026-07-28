@@ -1,23 +1,9 @@
-import pandas as pd
 from matplotlib import pyplot as plt
+import methods.data_processing as dp
 
 for i in range(1, 8):
     # Read processed data
-    dfISF = pd.read_csv(f'data/processed/HABS{i}_ISF.csv')
-    dfBP = pd.read_csv(f'data/processed/HABS{i}_BP.csv')
-
-    # Combine date and time columns
-    dfISF['datetime'] = pd.to_datetime(dfISF['Date'] + ' ' + dfISF['Time'], format='%d/%m/%Y %H:%M:%S', errors='coerce')
-    dfBP['datetime'] = pd.to_datetime(dfBP['Date'] + ' ' + dfBP['Time'], format='%d/%m/%Y %H:%M:%S', errors='coerce')
-
-    # Save dataframe columns as variables for plotting
-    timesISF = dfISF['datetime']
-    timesBP = dfBP['datetime']
-    CORT = dfBP['Cortisol']
-    Cortisone = dfBP['Cortisone']
-    ACTH = dfBP['ACTH']
-    mCORT = dfISF['mCortisol']
-    mCortisone = dfISF['mCortisone']
+    timesISF, timesBP, CORT, Cortisone, ACTH, mCORT, mCortisone = dp.get_data(i)
 
     # Plot timeseries data
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12))
