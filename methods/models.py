@@ -7,6 +7,7 @@ from . import day_len, PARAMETER_BOUNDARIES
 class BaseHPAModel(pints.ForwardModel):
     def __init__(self,
                  parameters,
+                 init_conds,
                  times,
                  num_days=6,
                  days_to_keep=1,
@@ -16,6 +17,7 @@ class BaseHPAModel(pints.ForwardModel):
         self.step = step
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.init_conds = init_conds
         self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
@@ -46,18 +48,25 @@ class BaseHPAModel(pints.ForwardModel):
         # Update fix parameters
         self._set_fix_parameters(self._fix_parameters)
 
-        K_a = self.parameters['K_a']
-        K_c = self.parameters['K_c']
-        alpha = self.parameters['alpha']
-        delay = self.parameters['delay']
-        lambda_s = self.parameters['lambda_s']
-        lambda_a = self.parameters['lambda_a']
-        t_s = self.parameters['t_s']
-        m_a = self.parameters['m_a']
-        m_c = self.parameters['m_c']
-        sigma = self.parameters['sigma']
-        gamma_a = self.parameters['gamma_a']
-        gamma_c = self.parameters['gamma_c']
+        # HPC parameters
+        gamma_a = self.parameters['gamma_a'] # ACTH degradation rate
+        gamma_c = self.parameters['gamma_c'] # Cortisol degradation rate
+        K_a = self.parameters['K_a'] # ACTH receptor half-saturation constant
+        K_c = self.parameters['K_c'] # Cortisol receptor half-saturation constant
+        m_a = self.parameters['m_a'] # Hill coefficient for ACTH-driven CORT production
+        m_c = self.parameters['m_c'] # Hill coefficient for CORT feedback
+        delay = self.parameters['delay'] # Feedback delay from CORT to ACTH
+        alpha = self.parameters['alpha'] # Maximal rate of ACTH-induced CORT production
+
+        # CRH parameters
+        lambda_a = self.parameters['lambda_a'] # Baseline amplitude of CRH drive
+        lambda_s = self.parameters['lambda_s'] # Circadian modulation strength
+        t_s = self.parameters['t_s'] # Circadian phase shift
+        sigma = self.parameters['sigma'] # Asymmetry of circadian drive
+
+        # Initial conditions
+        A_0 = self.init_conds['ACTH']
+        C_0 = self.init_conds['CORT']
 
         # Define the DDE model
         def model(Y, t):
@@ -71,7 +80,7 @@ class BaseHPAModel(pints.ForwardModel):
 
         # Define initial conditions
         def initial_conditions(t):
-            return [5, 400]
+            return [A_0, C_0]
         
         # Run the simulation  
         result = ddeint(model, initial_conditions, self.times)

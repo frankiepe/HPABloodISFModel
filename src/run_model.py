@@ -15,10 +15,11 @@ parser.add_argument('-m', '--model', type = int, help='Select model for optimisa
                     '4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
                     '6: HPAModelCRHSupp')
 parser.add_argument('-s', '--step', type=float, help='Step size for dde solver')
+parser.add_argument('-w', '--warmup', type = int, default=5, help='No. of days of warmup (to reach steady state)')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
 args = parser.parse_args()
 
-def run_model(m_n, step, days_to_keep=1):
+def run_model(m_n, step, warmup, days_to_keep=1):
     pars_file = f'configs/{model_dict[m_n]}/test_parameters.json'
 
     # Load config
@@ -27,7 +28,8 @@ def run_model(m_n, step, days_to_keep=1):
 
     # Get parameters from config
     pars = config.get('parameters', {})
-    num_days = 6
+    ics = config.get('initial_conditions', {})
+    num_days = warmup + days_to_keep
 
     # Create time array
     timesteps = day_len * num_days
@@ -49,7 +51,7 @@ def run_model(m_n, step, days_to_keep=1):
     elif m_n == 6:
         model = models.HPAModelCRHSupp
 
-    dde_model = model(parameters=pars, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
+    dde_model = model(parameters=pars, init_conds=ics, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
 
     # Get plotting times (some cropping may occur if day_len/step != whole number)
     plot_times = times[int((day_len/step)*(num_days-days_to_keep)):] - (day_len)*(num_days-days_to_keep)
@@ -67,10 +69,11 @@ def run_model(m_n, step, days_to_keep=1):
 if __name__ == "__main__":
     m_n = args.model
     step = args.step # must be sufficiently small to ensure dde solver converges (i.e. <=0.1)
+    warmup = args.warmup
     outdir = args.outdir
     if not os.path.exists(f'output/{outdir}'):
         os.makedirs(f'output/{outdir}')
         os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots')
 
-    res, times, crh_drive = run_model(m_n, step)
+    res, times, crh_drive = run_model(m_n, step, warmup)
     plotting.plot_model_output(m_n, res, times, crh_drive, outdir=outdir, filename=f'model_output_step{step}', days_to_keep=1)
