@@ -14,7 +14,7 @@
         "sigma": 0.75
     },
     "initial_conditions": {
-        "ACTH": 5,
-        "CORT": 400
+        "A": 5,
+        "C": 400
     }
 }
