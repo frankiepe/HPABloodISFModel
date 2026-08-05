@@ -422,6 +422,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
 class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
     def __init__(self,
                  parameters,
+                 init_conds,
                  times,
                  num_days=6,
                  days_to_keep=1,
@@ -431,6 +432,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         self.step = step
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.init_conds = init_conds
         self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
@@ -461,36 +463,52 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         # Update fix parameters
         self._set_fix_parameters(self._fix_parameters)
 
-        K_a = self.parameters['K_a']
-        K_f = self.parameters['K_f']
-        k_mf = self.parameters['k_mf']
-        k_me = self.parameters['k_me']
-        V_f = self.parameters['V_f']
-        V_e = self.parameters['V_e']
-        k_1 = self.parameters['k_1']
-        k_2 = self.parameters['k_2']
-        k_3 = self.parameters['k_3']
-        k_4 = self.parameters['k_4']
-        k_5 = self.parameters['k_5']
-        k_6 = self.parameters['k_6']
-        k_7 = self.parameters['k_7']
-        k_8 = self.parameters['k_8']
-        k_BI = self.parameters['k_BI'] # new param
-        V_B = self.parameters['V_B'] # new param
-        V_I = self.parameters['V_I'] # new param
-        alpha = self.parameters['alpha']
-        delay = self.parameters['delay']
-        lambda_s = self.parameters['lambda_s']
-        lambda_a = self.parameters['lambda_a']
-        t_s = self.parameters['t_s']
-        m_a = self.parameters['m_a']
-        m_f = self.parameters['m_f']
-        sigma = self.parameters['sigma']
-        gamma_a = self.parameters['gamma_a']
-        gamma_f_b = self.parameters['gamma_f_b']
-        gamma_e_b = self.parameters['gamma_e_b']
-        gamma_f_i = self.parameters['gamma_f_i'] # new param
-        gamma_e_i = self.parameters['gamma_e_i'] # new param
+        # HPC parameters
+        gamma_a = self.parameters['gamma_a'] # ACTH degradation rate
+        gamma_f_b = self.parameters['gamma_f_b'] # Cortisol degradation rate in BP
+        gamma_f_i = self.parameters['gamma_f_i'] # Cortisol degradation rate in ISF (new param)
+        gamma_e_b = self.parameters['gamma_e_b'] # Cortisone degradation rate in BP
+        gamma_e_i = self.parameters['gamma_e_i'] # Cortisone degradation rate in ISF (new param)
+        K_a = self.parameters['K_a'] # ACTH receptor half-saturation constant
+        K_f = self.parameters['K_f'] # Cortisol receptor half-saturation constant
+        k_mf = self.parameters['k_mf'] # Cortisol conc. when reaction rate is half V_f
+        k_me = self.parameters['k_me'] # Cortisone conc. when reaction rate is half V_e
+        k_1 = self.parameters['k_1'] # F:CBG on-binding rate
+        k_2 = self.parameters['k_2'] # F:CBG off-binding rate
+        k_3 = self.parameters['k_3'] # F:Alb on-binding rate
+        k_4 = self.parameters['k_4'] # F:Alb off-binding rate
+        k_5 = self.parameters['k_5'] # E:CBG on-binding rate
+        k_6 = self.parameters['k_6'] # E:CBG off-binding rate
+        k_7 = self.parameters['k_7'] # E:Alb on-binding rate
+        k_8 = self.parameters['k_8'] # E:Alb off-binding rate
+        k_BI = self.parameters['k_BI'] # Permeability constant (new param)
+        m_a = self.parameters['m_a'] # Hill coefficient for ACTH-driven CORT production
+        m_f = self.parameters['m_f'] # Hill coefficient for CORT feedback
+        V_f = self.parameters['V_f'] # Max. cortisol to cortisone rate
+        V_e = self.parameters['V_e'] # Max. cortisone to cortisol rate
+        V_B = self.parameters['V_B'] # Vascular distribution volume (new param)
+        V_I = self.parameters['V_I'] # ISF distribution volume (new param)
+        delay = self.parameters['delay'] # Feedback delay from CORT to ACTH
+        alpha = self.parameters['alpha'] # Maximal rate of ACTH-induced CORT production
+
+        # CRH parameters
+        lambda_a = self.parameters['lambda_a'] # Baseline amplitude of CRH drive
+        lambda_s = self.parameters['lambda_s'] # Circadian modulation strength
+        t_s = self.parameters['t_s'] # Circadian phase shift
+        sigma = self.parameters['sigma'] # Asymmetry of circadian drive
+
+        # Initial conditions
+        A_0 = self.init_conds['A']
+        F_B_0 = self.init_conds['F_B']
+        E_B_0 = self.init_conds['E_B']
+        F_CBG_0 = self.init_conds['F_CBG']
+        F_Alb_0 = self.init_conds['F_Alb'] 
+        E_CBG_0 = self.init_conds['E_CBG'] 
+        E_Alb_0 = self.init_conds['E_Alb'] 
+        CBG_0 = self.init_conds['CBG'] 
+        Alb_0 = self.init_conds['Alb']
+        F_I_0 = self.init_conds['F_I']
+        E_I_0 = self.init_conds['E_I']
 
         # Define the DDE model
         def model(Y, t):
@@ -513,7 +531,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
 
         # Define initial conditions
         def initial_conditions(t):
-            return [5, 10, 1, 0, 0, 0, 0, 20, 40000, 0, 0]
+            return [A_0, F_B_0, E_B_0, F_CBG_0, F_Alb_0, E_CBG_0, E_Alb_0, CBG_0, Alb_0, F_I_0, E_I_0]
         
         # Run the simulation     
         result = ddeint(model, initial_conditions, self.times)
