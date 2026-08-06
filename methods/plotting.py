@@ -98,15 +98,61 @@ def plot_parameter_histograms(param_values, param_name, reps, hist_file, bins=20
     lb = pb[param_name][0]
     ub = pb[param_name][1]
     fig, ax = plt.subplots(figsize=(8, 5))
-    _, bin_edges, _ = ax.hist(param_values, bins=bins, edgecolor='black', density=True, color="tab:orange", alpha=0.5, label='Posterior')
-    bin_width = bin_edges[1] - bin_edges[0]
-    ax.axhline(len(param_values)/(reps * bin_width), color = 'black', alpha = 0.5)
+    ax.hist(param_values, bins=bins, edgecolor='black', density=True, color="tab:orange", alpha=0.5, label='Posterior')
+    ax.axhline(1/(ub-lb), color = 'black', alpha = 0.5)
     ax.set_title(f"Histogram of accepted values for parameter '{param_name}'")
     ax.set_xlabel(param_name)
     ax.set_ylabel('Density')
     ax.set_xlim(lb, ub)
-    ax.fill_between(np.linspace(lb, ub, 100), 0, len(param_values)/(reps * bin_width) , color='tab:blue', alpha=0.4, label='Prior')
+    ax.fill_between(np.linspace(lb, ub, 100), 0, 1/(ub-lb), color='tab:blue', alpha=0.4, label='Prior')
     ax.legend()
     fig.tight_layout()
     fig.savefig(hist_file)
+    plt.close(fig)
+
+def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, d_n, m_traj_file, days_to_keep=1, plot_rejected=False):
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+    axes = [ax1, ax2]
+
+    if plot_rejected:
+        for par_i in pars_reject:
+            res = dde_model.simulate(list(par_i), times, fitting=False)
+            ax1.plot(times, res.T[1], color='grey', alpha=0.1)
+            ax2.plot(times, res.T[0], color='grey', alpha=0.1)
+
+    n = 0
+    for par_i in pars_accept:
+        res = dde_model.simulate(list(par_i), times, fitting=False)
+        if n == 0:
+            ax1.plot(times, res.T[1], label='Cortisol', color='blue', alpha=0.5)
+            ax2.plot(times, res.T[0], label='ACTH', color='orange', alpha=0.5)
+            n+=1
+        else:
+            ax1.plot(times, res.T[1], color='blue', alpha=0.5)
+            ax2.plot(times, res.T[0], color='orange', alpha=0.5)
+
+    ax1.set_title('Cortisol in Blood Plasma')
+    ax2.set_title('ACTH in Blood Plasma')
+    ax1.set_ylabel('nmol/L')
+    ax2.set_ylabel('pmol/L')
+    ax2.set_xlabel('Time (minutes)')
+
+    print(f"Plotting data for individual #{d_n}...")
+    timesISF, timesBP, CORT, Cortisone, ACTH, mCORT, mCortisone = dp.get_data(d_n)
+    sBP = pd.to_datetime(pd.Series(timesBP))
+    timesBP = (sBP - sBP.iloc[0]).dt.total_seconds() / 60
+    sISF = pd.to_datetime(pd.Series(timesISF))
+    timesISF = (sISF - sISF.iloc[0]).dt.total_seconds() / 60
+    ax1.plot(timesBP, CORT, label='Cortisol data', color='blue', marker='o')
+    ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
+    for ax in axes:
+        ax.set_xlim(list(times)[0], list(times)[-1])
+        for i in range(days_to_keep):
+            ax.axvline(x=day_len*i, color='gray', linestyle='--') 
+        ax.legend()
+
+    ax1.set_ylim(0, 500)
+    ax2.set_ylim(0, 30)
+    plt.suptitle('Corticosteroid and ACTH Levels Over Time')
+    plt.savefig(m_traj_file)
     plt.close(fig)

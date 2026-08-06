@@ -13,6 +13,8 @@ import methods.classes as mc
 from methods import model_dict, day_len
 import methods.data_processing as dp
 import warnings
+import seaborn as sns
+from matplotlib import pyplot as plt
 
 parser = argparse.ArgumentParser(description='Fit models to data.')
 parser.add_argument('-m', '--model', type = int, help='Select model for optimisation: ' \
@@ -91,7 +93,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
     # Define Pints problem for optimisation
     if m_n in [1,6]:
         problem = pints.MultiOutputProblem(full_model, timesBP, np.array([ACTH, CORT]).T)
-        f = pints.MeanSquaredError(problem)
+        f = pints.MeanSquaredError(problem, weights=[np.mean(CORT)/np.mean(ACTH), 1]) # weighting to account for difference in scale between ACTH and CORT
     elif m_n in [2,3]:
         problem = pints.MultiOutputProblem(full_model, timesBP, np.array([ACTH, CORT, Cortisone]).T)
         f = pints.MeanSquaredError(problem)
@@ -105,27 +107,40 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
     # Set up model boundaries
     bounds = dde_model.get_and_create_boundaries()
 
-    thresh = 10000
+    # Define ABC parameters
+    acc_per = 5 # % of parameters accepted 
     reps = 1000
-    pars_accept = []
+
+    # Run ABC
+    pars_all = []
+    objs = []
     for i in np.arange(0,reps):
         if i % 20 == 0:
             print(f"Iteration {i}/{reps}")
-        par_i = bounds.sample(1)[0]
+        par_i = bounds.sample(1)[0] # sample
         with warnings.catch_warnings(record=True) as caught_warnings:
             warnings.simplefilter("always", RuntimeWarning)
-            obj_i = f(list(par_i))
+            obj_i = f(list(par_i)) # evaluate objective
 
-            # Process captured warnings
+            # Process any captured Runtime warnings
             if len(caught_warnings) > 0:
                 print(f"{par_i} produced warning(s)")
                 print(f"Correponds to objective of: {obj_i}")
 
-        if obj_i < thresh:
-            pars_accept.append(par_i)
+        objs.append(obj_i)
+        pars_all.append(par_i)
 
-    print(f"% of accepted parameters: {100*len(pars_accept)/reps}")
+    o_arr = np.array(objs)
+    p_arr = np.array(pars_all)
+    indices = np.argsort(o_arr)
+    sorted_o = o_arr[indices]
+    sorted_p = p_arr[indices]
+    pars_accept = sorted_p[:int(reps*(acc_per/100))]
+    pars_reject = sorted_p[int(reps*(acc_per/100)):]
 
+    print(f"Accepted objectives: {sorted_o[:int(reps*(acc_per/100))]}")
+
+    # Plot histograms of accepted parameters and correlation plot
     if len(pars_accept) > 0:
         for i in np.arange(0, len(init_pars.keys())):
             param_name = list(init_pars.keys())[i]
@@ -140,11 +155,25 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
 
                 plotting.plot_parameter_histograms(param_values, param_name, reps, hist_file)
                 print(f"Saved histogram for '{param_name}' to: {hist_file}")
+
+        df = pd.DataFrame(pars_accept, columns=init_pars.keys())
+        df.drop(columns=fixed_pars, inplace=True)
+        sns.pairplot(df, kind="kde", corner=True)
+        plt.savefig("output/" + outdir + f"/pairplot_step{step}_dataID{d_n}.png")
     else:
         print("No accepted parameters were found; histogram was not created.")
 
+    # Plot accepted model trajectories
+    plot_times = times[int((day_len/step)*(num_days-days_to_keep)):] - (day_len)*(num_days-days_to_keep)
+    if outdir is not None:
+        os.makedirs("output/" + outdir, exist_ok=True)
+        m_traj_file = os.path.join("output/" + outdir, f"m_traj_{param_name}_step{step}_dataID{d_n}.png")
+    else:
+        m_traj_file = f"m_traj_{param_name}_step{step}_dataID{d_n}.png"
+    plotting.plot_model_trajectories_ABC(dde_model, plot_times, pars_accept, pars_reject, d_n, m_traj_file)
+
 if __name__ == "__main__":
-    # read parsed variables
+    # Read parsed variables
     m_n = args.model
     d_n = args.ind
     warmup = args.warmup
@@ -152,5 +181,6 @@ if __name__ == "__main__":
     outdir = args.outdir
     fixed_pars = args.fixed_pars
 
-    print("Run ABC experiment")
+    # Run ABC experiment
+    print("Running ABC experiment...")
     run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars)
