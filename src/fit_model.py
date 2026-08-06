@@ -111,7 +111,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
     # Define Pints optimiser
     opt = pints.OptimisationController(
             f, q0, boundaries=bounds, method=pints.CMAES)
-    opt.set_max_iterations(20)
+    opt.set_max_iterations(100)
     opt.set_log_interval(iters=10, warm_up=10)
     opt.set_function_tolerance(iterations=20, threshold=1e-2)
 

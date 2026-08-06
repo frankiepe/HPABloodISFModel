@@ -110,29 +110,50 @@ def plot_parameter_histograms(param_values, param_name, reps, hist_file, bins=20
     fig.savefig(hist_file)
     plt.close(fig)
 
-def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, d_n, m_traj_file, days_to_keep=1, plot_rejected=False):
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
-    axes = [ax1, ax2]
+def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n, d_n, m_traj_file, days_to_keep=1, plot_rejected=False):
 
-    if plot_rejected:
-        for par_i in pars_reject:
-            res = dde_model.simulate(list(par_i), times, fitting=False)
-            ax1.plot(times, res.T[1], color='grey', alpha=0.1)
-            ax2.plot(times, res.T[0], color='grey', alpha=0.1)
+    if m_n <=3 or m_n == 6:
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+        axes = [ax1, ax2]
+        if m_n == 1 or m_n == 6:
+            if plot_rejected:
+                for par_i in pars_reject:
+                    res = dde_model.simulate(list(par_i), times, fitting=False)
+                    ax1.plot(times, res.T[1], color='grey', alpha=0.1)
+                    ax2.plot(times, res.T[0], color='grey', alpha=0.1)
+            n = 0
+            for par_i in pars_accept:
+                res = dde_model.simulate(list(par_i), times, fitting=False)
+                if n == 0:
+                    ax1.plot(times, res.T[1], label='Cortisol', color='blue', alpha=0.5)
+                    ax2.plot(times, res.T[0], label='ACTH', color='orange', alpha=0.5)
+                    n+=1
+                else:
+                    ax1.plot(times, res.T[1], color='blue', alpha=0.5)
+                    ax2.plot(times, res.T[0], color='orange', alpha=0.5)
+            ax1.set_title('Cortisol in Blood Plasma')
+        elif m_n == 2:
+            if plot_rejected:
+                for par_i in pars_reject:
+                    res = dde_model.simulate(list(par_i), times, fitting=False)
+                    ax1.plot(times, res.T[1], color='grey', alpha=0.1)
+                    ax1.plot(times, res.T[2], color='grey', alpha=0.1, linestyle = '--')
+                    ax2.plot(times, res.T[0], color='grey', alpha=0.1)
+            n = 0
+            for par_i in pars_accept:
+                res = dde_model.simulate(list(par_i), times, fitting=False)
+                if n == 0:
+                    ax1.plot(times, res.T[1], label='Cortisol', color='blue', alpha=0.5)
+                    ax1.plot(times, res.T[2], label='Cortisone', color='red', alpha=0.5)
+                    ax2.plot(times, res.T[0], label='ACTH', color='orange', alpha=0.5)
+                    n+=1
+                else:
+                    ax1.plot(times, res.T[1], color='blue', alpha=0.5)
+                    ax1.plot(times, res.T[2], color='red', alpha=0.5)
+                    ax2.plot(times, res.T[0], color='orange', alpha=0.5)
+            ax1.set_title('Cortisol and Cortisone in Blood Plasma')
+        ax2.set_title('ACTH in Blood Plasma')
 
-    n = 0
-    for par_i in pars_accept:
-        res = dde_model.simulate(list(par_i), times, fitting=False)
-        if n == 0:
-            ax1.plot(times, res.T[1], label='Cortisol', color='blue', alpha=0.5)
-            ax2.plot(times, res.T[0], label='ACTH', color='orange', alpha=0.5)
-            n+=1
-        else:
-            ax1.plot(times, res.T[1], color='blue', alpha=0.5)
-            ax2.plot(times, res.T[0], color='orange', alpha=0.5)
-
-    ax1.set_title('Cortisol in Blood Plasma')
-    ax2.set_title('ACTH in Blood Plasma')
     ax1.set_ylabel('nmol/L')
     ax2.set_ylabel('pmol/L')
     ax2.set_xlabel('Time (minutes)')
@@ -143,8 +164,11 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, d_n,
     timesBP = (sBP - sBP.iloc[0]).dt.total_seconds() / 60
     sISF = pd.to_datetime(pd.Series(timesISF))
     timesISF = (sISF - sISF.iloc[0]).dt.total_seconds() / 60
-    ax1.plot(timesBP, CORT, label='Cortisol data', color='blue', marker='o')
-    ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
+    if m_n in [1,2,6]:
+        ax1.plot(timesBP, CORT, label='Cortisol data', color='blue', marker='o')
+        ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
+        if m_n == 2:
+            ax1.plot(timesBP, Cortisone, label='Cortisone data', color='red', marker='o')
     for ax in axes:
         ax.set_xlim(list(times)[0], list(times)[-1])
         for i in range(days_to_keep):

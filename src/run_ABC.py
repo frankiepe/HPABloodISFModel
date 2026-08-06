@@ -96,7 +96,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
         f = pints.MeanSquaredError(problem, weights=[np.mean(CORT)/np.mean(ACTH), 1]) # weighting to account for difference in scale between ACTH and CORT
     elif m_n in [2,3]:
         problem = pints.MultiOutputProblem(full_model, timesBP, np.array([ACTH, CORT, Cortisone]).T)
-        f = pints.MeanSquaredError(problem)
+        f = pints.MeanSquaredError(problem, weights=[np.mean(CORT)/np.mean(ACTH), 1, np.mean(CORT)/np.mean(Cortisone)]) # weighting
     else:
         problem1 = pints.MultiOutputProblem(full_model1, timesBP, np.array([ACTH, CORT, Cortisone]).T)
         problem2 = pints.MultiOutputProblem(full_model2, timesISF, np.array([mCORT, mCortisone]).T)
@@ -109,15 +109,16 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
 
     # Define ABC parameters
     acc_per = 5 # % of parameters accepted 
-    reps = 1000
+    reps = 100
 
     # Run ABC
     pars_all = []
     objs = []
     for i in np.arange(0,reps):
-        if i % 20 == 0:
+        if i % 5 == 0:
             print(f"Iteration {i}/{reps}")
         par_i = bounds.sample(1)[0] # sample
+        print(par_i)
         with warnings.catch_warnings(record=True) as caught_warnings:
             warnings.simplefilter("always", RuntimeWarning)
             obj_i = f(list(par_i)) # evaluate objective
@@ -170,7 +171,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
         m_traj_file = os.path.join("output/" + outdir, f"m_traj_{param_name}_step{step}_dataID{d_n}.png")
     else:
         m_traj_file = f"m_traj_{param_name}_step{step}_dataID{d_n}.png"
-    plotting.plot_model_trajectories_ABC(dde_model, plot_times, pars_accept, pars_reject, d_n, m_traj_file)
+    plotting.plot_model_trajectories_ABC(dde_model, plot_times, pars_accept, pars_reject, m_n, d_n, m_traj_file)
 
 if __name__ == "__main__":
     # Read parsed variables
