@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 import json
 import argparse
-from matplotlib import pyplot as plt
+import methods.plotting as plotting
 import methods.models as models
 import methods.classes as mc
 from methods import model_dict, day_len
@@ -138,14 +138,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
                 else:
                     hist_file = f"hist_{param_name}_step{step}_dataID{d_n}.png"
 
-                fig, ax = plt.subplots(figsize=(8, 5))
-                ax.hist(param_values, bins=20, edgecolor='black')
-                ax.set_title(f"Histogram of accepted values for parameter '{param_name}'")
-                ax.set_xlabel(param_name)
-                ax.set_ylabel('Count')
-                fig.tight_layout()
-                fig.savefig(hist_file)
-                plt.close(fig)
+                plotting.plot_parameter_histograms(param_values, param_name, reps, hist_file)
                 print(f"Saved histogram for '{param_name}' to: {hist_file}")
     else:
         print("No accepted parameters were found; histogram was not created.")

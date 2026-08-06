@@ -1,6 +1,8 @@
 from matplotlib import pyplot as plt
 import methods.data_processing as dp
+from methods import PARAMETER_BOUNDARIES as pb
 import pandas as pd
+import numpy as np
 import os
 from . import day_len, model_dict
 
@@ -90,3 +92,21 @@ def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filenam
     if not os.path.exists(savedir):
         os.makedirs(savedir)
     plt.savefig(f'{savedir}/{filename}.png')
+    plt.close(fig)
+
+def plot_parameter_histograms(param_values, param_name, reps, hist_file, bins=20):
+    lb = pb[param_name][0]
+    ub = pb[param_name][1]
+    fig, ax = plt.subplots(figsize=(8, 5))
+    _, bin_edges, _ = ax.hist(param_values, bins=bins, edgecolor='black', density=True, color="tab:orange", alpha=0.5, label='Posterior')
+    bin_width = bin_edges[1] - bin_edges[0]
+    ax.axhline(len(param_values)/(reps * bin_width), color = 'black', alpha = 0.5)
+    ax.set_title(f"Histogram of accepted values for parameter '{param_name}'")
+    ax.set_xlabel(param_name)
+    ax.set_ylabel('Density')
+    ax.set_xlim(lb, ub)
+    ax.fill_between(np.linspace(lb, ub, 100), 0, len(param_values)/(reps * bin_width) , color='tab:blue', alpha=0.4, label='Prior')
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(hist_file)
+    plt.close(fig)
