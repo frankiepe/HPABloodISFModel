@@ -152,8 +152,37 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
                     ax1.plot(times, res.T[2], color='red', alpha=0.5)
                     ax2.plot(times, res.T[0], color='orange', alpha=0.5)
             ax1.set_title('Cortisol and Cortisone in Blood Plasma')
+        else:
+            if plot_rejected:
+                for par_i in pars_reject:
+                    res = dde_model.simulate(list(par_i), times, fitting=False)
+                    F_tot = res.T[1]+res.T[3]+res.T[4]
+                    E_tot = res.T[2]+res.T[5]+res.T[6]
+                    ax1.plot(times, F_tot, color='grey', alpha=0.1)
+                    ax1.plot(times, res.T[1], color='grey', alpha=0.1)
+                    ax1.plot(times, E_tot, color='grey', alpha=0.1, linestyle = '--')
+                    ax1.plot(times, res.T[2], color='grey', alpha=0.1, linestyle = '--')
+                    ax2.plot(times, res.T[0], color='grey', alpha=0.1)
+            n = 0
+            for par_i in pars_accept:
+                res = dde_model.simulate(list(par_i), times, fitting=False)
+                F_tot = res.T[1]+res.T[3]+res.T[4]
+                E_tot = res.T[2]+res.T[5]+res.T[6]
+                if n == 0:
+                    ax1.plot(times, F_tot, label='Total Cortisol', color='blue', alpha=0.5)
+                    ax1.plot(times, res.T[1], label='Free Cortisol', color='green', alpha=0.5)
+                    ax1.plot(times, E_tot, label='Total Cortisone', color='red', alpha=0.5)
+                    ax1.plot(times, res.T[2], label='Free Cortisone', color='yellow', alpha=0.5)
+                    ax2.plot(times, res.T[0], label='ACTH', color='orange', alpha=0.5)
+                    n+=1
+                else:
+                    ax1.plot(times, F_tot, color='blue', alpha=0.5)
+                    ax1.plot(times, res.T[1], color='green', alpha=0.5)
+                    ax1.plot(times, E_tot, color='red', alpha=0.5)
+                    ax1.plot(times, res.T[2], color='yellow', alpha=0.5)
+                    ax2.plot(times, res.T[0], color='orange', alpha=0.5)
+            ax1.set_title('Cortisol and Cortisone in Blood Plasma')
         ax2.set_title('ACTH in Blood Plasma')
-
     ax1.set_ylabel('nmol/L')
     ax2.set_ylabel('pmol/L')
     ax2.set_xlabel('Time (minutes)')
@@ -169,6 +198,11 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
         ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
         if m_n == 2:
             ax1.plot(timesBP, Cortisone, label='Cortisone data', color='red', marker='o')
+    elif m_n in [3,4,5]:
+        ax1.plot(timesBP, CORT, label='Total Cortisol data', color='blue', marker='o')
+        ax1.plot(timesBP, Cortisone, label='Total Cortisone data', color='red', marker='o')
+        if m_n == 3:
+            ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
     for ax in axes:
         ax.set_xlim(list(times)[0], list(times)[-1])
         for i in range(days_to_keep):
