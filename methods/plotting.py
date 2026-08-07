@@ -94,7 +94,7 @@ def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filenam
     plt.savefig(f'{savedir}/{filename}.png')
     plt.close(fig)
 
-def plot_parameter_histograms(param_values, param_name, reps, hist_file, bins=20):
+def plot_parameter_histograms(param_values, param_name, hist_file, bins=20):
     lb = pb[param_name][0]
     ub = pb[param_name][1]
     fig, ax = plt.subplots(figsize=(8, 5))

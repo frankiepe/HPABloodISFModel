@@ -153,7 +153,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
                 else:
                     hist_file = f"hist_{param_name}_model{m_n}_step{step}_dataID{d_n}.png"
 
-                plotting.plot_parameter_histograms(param_values, param_name, reps, hist_file)
+                plotting.plot_parameter_histograms(param_values, param_name, hist_file)
                 print(f"Saved histogram for '{param_name}' to: {hist_file}")
 
         df = pd.DataFrame(pars_accept, columns=init_pars.keys())
