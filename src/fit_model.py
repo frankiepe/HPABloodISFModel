@@ -94,7 +94,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
         f = pints.MeanSquaredError(problem, weights=[np.mean(CORT)/np.mean(ACTH), 1]) # weighting to account for difference in scale between ACTH and CORT
     elif m_n in [2,3]:
         problem = pints.MultiOutputProblem(full_model, timesBP, np.array([ACTH, CORT, Cortisone]).T)
-        f = pints.MeanSquaredError(problem)
+        f = pints.MeanSquaredError(problem, weights=[np.mean(CORT)/np.mean(ACTH), 1, np.mean(CORT)/np.mean(Cortisone)]) # weighting
     else:
         problem1 = pints.MultiOutputProblem(full_model1, timesBP, np.array([ACTH, CORT, Cortisone]).T)
         problem2 = pints.MultiOutputProblem(full_model2, timesISF, np.array([mCORT, mCortisone]).T)

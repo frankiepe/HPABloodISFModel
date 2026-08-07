@@ -109,16 +109,15 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
 
     # Define ABC parameters
     acc_per = 5 # % of parameters accepted 
-    reps = 100
+    reps = 1000
 
     # Run ABC
     pars_all = []
     objs = []
     for i in np.arange(0,reps):
-        if i % 5 == 0:
+        if i % 20 == 0:
             print(f"Iteration {i}/{reps}")
         par_i = bounds.sample(1)[0] # sample
-        print(par_i)
         with warnings.catch_warnings(record=True) as caught_warnings:
             warnings.simplefilter("always", RuntimeWarning)
             obj_i = f(list(par_i)) # evaluate objective
@@ -150,9 +149,9 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
 
                 if outdir is not None:
                     os.makedirs("output/" + outdir, exist_ok=True)
-                    hist_file = os.path.join("output/" + outdir, f"hist_{param_name}_step{step}_dataID{d_n}.png")
+                    hist_file = os.path.join("output/" + outdir, f"hist_{param_name}_model{m_n}_step{step}_dataID{d_n}.png")
                 else:
-                    hist_file = f"hist_{param_name}_step{step}_dataID{d_n}.png"
+                    hist_file = f"hist_{param_name}_model{m_n}_step{step}_dataID{d_n}.png"
 
                 plotting.plot_parameter_histograms(param_values, param_name, reps, hist_file)
                 print(f"Saved histogram for '{param_name}' to: {hist_file}")
@@ -160,7 +159,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
         df = pd.DataFrame(pars_accept, columns=init_pars.keys())
         df.drop(columns=fixed_pars, inplace=True)
         sns.pairplot(df, kind="kde", corner=True)
-        plt.savefig("output/" + outdir + f"/pairplot_step{step}_dataID{d_n}.png")
+        plt.savefig("output/" + outdir + f"/pairplot_model{m_n}_step{step}_dataID{d_n}.png")
     else:
         print("No accepted parameters were found; histogram was not created.")
 
@@ -168,9 +167,9 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
     plot_times = times[int((day_len/step)*(num_days-days_to_keep)):] - (day_len)*(num_days-days_to_keep)
     if outdir is not None:
         os.makedirs("output/" + outdir, exist_ok=True)
-        m_traj_file = os.path.join("output/" + outdir, f"m_traj_{param_name}_step{step}_dataID{d_n}.png")
+        m_traj_file = os.path.join("output/" + outdir, f"m_traj_{param_name}_model{m_n}_step{step}_dataID{d_n}.png")
     else:
-        m_traj_file = f"m_traj_{param_name}_step{step}_dataID{d_n}.png"
+        m_traj_file = f"m_traj_{param_name}_model{m_n}_step{step}_dataID{d_n}.png"
     plotting.plot_model_trajectories_ABC(dde_model, plot_times, pars_accept, pars_reject, m_n, d_n, m_traj_file)
 
 if __name__ == "__main__":
