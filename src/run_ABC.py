@@ -25,10 +25,10 @@ parser.add_argument('-i', '--ind', type = int, help='Select data index')
 parser.add_argument('-w', '--warmup', type = int, default=5, help='No. of days of warmup (to reach steady state)')
 parser.add_argument('-s', '--step', type=float, default=0.1, help='Step size for dde solver (must be sufficiently small for convergence)')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
-parser.add_argument('-f', '--fixed_pars', type=str, nargs='*', help='Parameters to fix (i.e. not fit)')
+parser.add_argument('-f', '--fixed', type=str, nargs='*', help='Parameters to fix (i.e. not fit)')
 args = parser.parse_args()
 
-def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
+def run_ABC(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
     # Get config file
     init_pars_file = f'configs/{model_dict[m_n]}/test_parameters.json'
 
@@ -38,6 +38,16 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
 
     # Get parameters from config
     init_pars = config.get('parameters', {})
+    fixed_pars = init_pars.copy()
+    
+    # Filter fixed vs. non-fixed parameters
+    all_par_keys = list(init_pars.keys())
+    for par_key in all_par_keys:
+        if par_key in fixed:
+            init_pars.pop(par_key)
+        else:
+            fixed_pars.pop(par_key)
+
     ics = config.get('initial_conditions', {})
     num_days = warmup+days_to_keep
 
@@ -70,11 +80,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
         m_wrap = mc.ModelBlood
 
     # Define model
-    dde_model = model(parameters=init_pars, init_conds=ics, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
-
-    # Fix parameters
-    if fixed_pars is not None:
-        dde_model.set_fix_parameters({i:init_pars[i] for i in fixed_pars})
+    dde_model = model(parameters=init_pars, fixed_pars=fixed_pars, init_conds=ics, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
 
     # Wrap in blood or ISF model for fitting
     if m_n in [1,2,3,6]:
@@ -109,13 +115,13 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
 
     # Define ABC parameters
     acc_per = 5 # % of parameters accepted 
-    reps = 1000
+    reps = 250
 
     # Run ABC
     pars_all = []
     objs = []
     for i in np.arange(0,reps):
-        if i % 20 == 0:
+        if i % 10 == 0:
             print(f"Iteration {i}/{reps}")
         par_i = bounds.sample(1)[0] # sample
         with warnings.catch_warnings(record=True) as caught_warnings:
@@ -144,20 +150,18 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
     if len(pars_accept) > 0:
         for i in np.arange(0, len(init_pars.keys())):
             param_name = list(init_pars.keys())[i]
-            if param_name not in fixed_pars:
-                param_values = [p[i] for p in pars_accept]
+            param_values = [p[i] for p in pars_accept]
 
-                if outdir is not None:
-                    os.makedirs("output/" + outdir, exist_ok=True)
-                    hist_file = os.path.join("output/" + outdir, f"hist_{param_name}_model{m_n}_step{step}_dataID{d_n}.png")
-                else:
-                    hist_file = f"hist_{param_name}_model{m_n}_step{step}_dataID{d_n}.png"
+            if outdir is not None:
+                os.makedirs("output/" + outdir, exist_ok=True)
+                hist_file = os.path.join("output/" + outdir, f"hist_{param_name}_model{m_n}_step{step}_dataID{d_n}.png")
+            else:
+                hist_file = f"hist_{param_name}_model{m_n}_step{step}_dataID{d_n}.png"
 
-                plotting.plot_parameter_histograms(param_values, param_name, hist_file)
-                print(f"Saved histogram for '{param_name}' to: {hist_file}")
+            plotting.plot_parameter_histograms(param_values, param_name, hist_file)
+            print(f"Saved histogram for '{param_name}' to: {hist_file}")
 
         df = pd.DataFrame(pars_accept, columns=init_pars.keys())
-        df.drop(columns=fixed_pars, inplace=True)
         sns.pairplot(df, kind="kde", corner=True)
         plt.savefig("output/" + outdir + f"/pairplot_model{m_n}_step{step}_dataID{d_n}.png")
     else:
@@ -179,8 +183,8 @@ if __name__ == "__main__":
     warmup = args.warmup
     step = args.step
     outdir = args.outdir
-    fixed_pars = args.fixed_pars
+    fixed = args.fixed
 
     # Run ABC experiment
     print("Running ABC experiment...")
-    run_ABC(m_n, d_n, warmup, step, outdir, fixed_pars)
+    run_ABC(m_n, d_n, warmup, step, outdir, fixed)
