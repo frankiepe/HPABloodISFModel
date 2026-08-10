@@ -3,6 +3,7 @@ import pints
 from ddeint import ddeint
 import numpy as np
 from . import day_len, PARAMETER_BOUNDARIES
+from scipy import signal as scipy_signal
 
 class BaseHPAModel(pints.ForwardModel):
     def __init__(self,
@@ -10,12 +11,16 @@ class BaseHPAModel(pints.ForwardModel):
                  fixed_pars,
                  init_conds,
                  times,
+                 signal_range = (7,13),
                  num_days=6,
                  days_to_keep=1,
-                 step=0.1):
+                 step=0.1,
+                 reject=True):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step
+        self.signal_range = signal_range
+        self.reject = reject
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
         self.fixed_pars = fixed_pars
@@ -110,6 +115,10 @@ class BaseHPAModel(pints.ForwardModel):
             filtered_output = result[indices]
             result = filtered_output
 
+        if (self.reject == True):
+            if (self.reject_parameter_combination(result)):
+                return np.full((len(result), result.ndim), 5000)
+
         return result
 
     def n_outputs(self):
@@ -135,6 +144,19 @@ class BaseHPAModel(pints.ForwardModel):
             upperbounds.append(upperbound)
         
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
+
+    # Function to reject parameter combination if number of peaks are outside a plausible range
+    def reject_parameter_combination(self, result): 
+        for i in range(result.shape[1]):
+            signals, _ = scipy_signal.find_peaks(result[:, i])
+            number_of_signals = len(signals)
+
+            lower_bound, upper_bound = self.signal_range
+
+            if not (lower_bound <= number_of_signals <= upper_bound): 
+                return True
+        
+        return False
     
 class HPAModelFEInter(pints.ForwardModel):
     def __init__(self,
@@ -200,8 +222,8 @@ class HPAModelFEInter(pints.ForwardModel):
         gamma_e = par_dict['gamma_e'] # Cortisone degradation rate (new param)
         K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
         K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
-        k_mf = par_dict['k_mf'] # Cortisol conc. when reaction rate is half V_f (new param)
-        k_me = par_dict['k_me'] # Cortisone conc. when reaction rate is half V_e (new param)
+        K_mf = par_dict['K_mf'] # Cortisol conc. when reaction rate is half V_f (new param)
+        K_me = par_dict['K_me'] # Cortisone conc. when reaction rate is half V_e (new param)
         m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
         m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
         V_f = par_dict['V_f'] # Max. cortisol to cortisone rate (new param)
@@ -226,8 +248,8 @@ class HPAModelFEInter(pints.ForwardModel):
             F_delay = Y(t - delay)[1]
 
             dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
-            dFdt = -gamma_f*F + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + (V_e*E)/(k_me+E) - (V_f+F)/(k_mf+F)
-            dEdt = -gamma_e*E - (V_e*E)/(k_me+E) + (V_f+F)/(k_mf+F)
+            dFdt = -gamma_f*F + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + (V_e*E)/(K_me+E) - (V_f+F)/(K_mf+F)
+            dEdt = -gamma_e*E - (V_e*E)/(K_me+E) + (V_f+F)/(K_mf+F)
 
             return [dAdt, dFdt, dEdt]
 
@@ -339,8 +361,8 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         gamma_e = par_dict['gamma_e'] # Cortisone degradation rate
         K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
         K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
-        k_mf = par_dict['k_mf'] # Cortisol conc. when reaction rate is half V_f
-        k_me = par_dict['k_me'] # Cortisone conc. when reaction rate is half V_e
+        K_mf = par_dict['K_mf'] # Cortisol conc. when reaction rate is half V_f
+        K_me = par_dict['K_me'] # Cortisone conc. when reaction rate is half V_e
         k_1 = par_dict['k_1'] # F:CBG on-binding rate (new param)
         k_2 = par_dict['k_2'] # F:CBG off-binding rate (new param)
         k_3 = par_dict['k_3'] # F:Alb on-binding rate (new param)
@@ -380,8 +402,8 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
 
             dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
             dFdt = -(gamma_f+k_1*CBG+k_3*Alb)*F + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_2*F_CBG + k_4*F_Alb + \
-                (V_e*E)/(k_me+E) - (V_f+F)/(k_mf+F)
-            dEdt = -(gamma_e+k_5*CBG+k_7*Alb)*E + k_6*E_CBG + k_8*E_Alb - (V_e*E)/(k_me+E) + (V_f+F)/(k_mf+F)
+                (V_e*E)/(K_me+E) - (V_f+F)/(K_mf+F)
+            dEdt = -(gamma_e+k_5*CBG+k_7*Alb)*E + k_6*E_CBG + k_8*E_Alb - (V_e*E)/(K_me+E) + (V_f+F)/(K_mf+F)
             dF_CBGdt = k_1*F*CBG - k_2*F_CBG
             dF_Albdt = k_3*F*Alb - k_4*F_Alb
             dE_CBGdt = k_5*E*CBG - k_6*E_CBG
@@ -501,8 +523,8 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         gamma_e_i = par_dict['gamma_e_i'] # Cortisone degradation rate in ISF (new param)
         K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
         K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
-        k_mf = par_dict['k_mf'] # Cortisol conc. when reaction rate is half V_f
-        k_me = par_dict['k_me'] # Cortisone conc. when reaction rate is half V_e
+        K_mf = par_dict['K_mf'] # Cortisol conc. when reaction rate is half V_f
+        K_me = par_dict['K_me'] # Cortisone conc. when reaction rate is half V_e
         k_1 = par_dict['k_1'] # F:CBG on-binding rate
         k_2 = par_dict['k_2'] # F:CBG off-binding rate
         k_3 = par_dict['k_3'] # F:Alb on-binding rate
@@ -547,9 +569,9 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
 
             dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
             dF_Bdt = -(gamma_f_b+k_1*CBG+k_3*Alb)*F_B + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_2*F_CBG + k_4*F_Alb + \
-                (V_e*E_B)/(k_me+E_B) - (V_f+F_B)/(k_mf+F_B) - (k_BI/V_B)*(F_B-F_I)
-            dE_Bdt = -(gamma_e_b+k_5*CBG+k_7*Alb)*E_B + k_6*E_CBG + k_8*E_Alb - (V_e*E_B)/(k_me+E_B) + \
-                (V_f+F_B)/(k_mf+F_B) - (k_BI/V_B)*(E_B-E_I)
+                (V_e*E_B)/(K_me+E_B) - (V_f+F_B)/(K_mf+F_B) - (k_BI/V_B)*(F_B-F_I)
+            dE_Bdt = -(gamma_e_b+k_5*CBG+k_7*Alb)*E_B + k_6*E_CBG + k_8*E_Alb - (V_e*E_B)/(K_me+E_B) + \
+                (V_f+F_B)/(K_mf+F_B) - (k_BI/V_B)*(E_B-E_I)
             dF_CBGdt = k_1*F_B*CBG - k_2*F_CBG
             dF_Albdt = k_3*F_B*Alb - k_4*F_Alb
             dE_CBGdt = k_5*E_B*CBG - k_6*E_CBG
@@ -671,10 +693,10 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         gamma_e_i = par_dict['gamma_e_i'] # Cortisone degradation rate in ISF
         K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
         K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
-        k_mfB = par_dict['k_mfB'] # Cortisol conc. when reaction rate is half V_f_b in BP
-        k_meB = par_dict['k_meB'] # Cortisone conc. when reaction rate is half V_e_b in BP
-        k_mfI = par_dict['k_mfI'] # Cortisol conc. when reaction rate is half V_f_i in ISF (new param)
-        k_meI = par_dict['k_meI'] # Cortisone conc. when reaction rate is half V_e_i in ISF (new param)
+        K_mfB = par_dict['K_mfB'] # Cortisol conc. when reaction rate is half V_f_b in BP
+        K_meB = par_dict['K_meB'] # Cortisone conc. when reaction rate is half V_e_b in BP
+        K_mfI = par_dict['K_mfI'] # Cortisol conc. when reaction rate is half V_f_i in ISF (new param)
+        K_meI = par_dict['K_meI'] # Cortisone conc. when reaction rate is half V_e_i in ISF (new param)
         k_1 = par_dict['k_1'] # F:CBG on-binding rate
         k_2 = par_dict['k_2'] # F:CBG off-binding rate
         k_3 = par_dict['k_3'] # F:Alb on-binding rate
@@ -721,17 +743,17 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
 
             dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
             dF_Bdt = -(gamma_f_b+k_1*CBG+k_3*Alb)*F_B + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_2*F_CBG + k_4*F_Alb + \
-                (V_e_b*E_B)/(k_meB+E_B) - (V_f_b+F_B)/(k_mfB+F_B) - (k_BI/V_B)*(F_B-F_I)
-            dE_Bdt = -(gamma_e_b+k_5*CBG+k_7*Alb)*E_B + k_6*E_CBG + k_8*E_Alb - (V_e_b*E_B)/(k_meB+E_B) + \
-                (V_f_b+F_B)/(k_mfB+F_B) - (k_BI/V_B)*(E_B-E_I)
+                (V_e_b*E_B)/(K_meB+E_B) - (V_f_b+F_B)/(K_mfB+F_B) - (k_BI/V_B)*(F_B-F_I)
+            dE_Bdt = -(gamma_e_b+k_5*CBG+k_7*Alb)*E_B + k_6*E_CBG + k_8*E_Alb - (V_e_b*E_B)/(K_meB+E_B) + \
+                (V_f_b+F_B)/(K_mfB+F_B) - (k_BI/V_B)*(E_B-E_I)
             dF_CBGdt = k_1*F_B*CBG - k_2*F_CBG
             dF_Albdt = k_3*F_B*Alb - k_4*F_Alb
             dE_CBGdt = k_5*E_B*CBG - k_6*E_CBG
             dE_Albdt = k_7*E_B*Alb - k_8*E_Alb
             dCBGdt = k_2*F_CBG - k_1*F_B*CBG + k_6*E_CBG - k_5*E_B*CBG
             dAlbdt = k_4*F_Alb - k_3*F_B*Alb + k_8*E_Alb - k_7*E_B*Alb
-            dF_Idt = (k_BI/V_I)*(F_B-F_I) - gamma_f_i*F_I + (V_e_i*E_I)/(k_meI+E_I) - (V_f_i+F_I)/(k_mfI+F_I)
-            dE_Idt = (k_BI/V_I)*(E_B-E_I) - gamma_e_i*E_I - (V_e_i*E_I)/(k_meI+E_I) + (V_f_i+F_I)/(k_mfI+F_I)
+            dF_Idt = (k_BI/V_I)*(F_B-F_I) - gamma_f_i*F_I + (V_e_i*E_I)/(K_meI+E_I) - (V_f_i+F_I)/(K_mfI+F_I)
+            dE_Idt = (k_BI/V_I)*(E_B-E_I) - gamma_e_i*E_I - (V_e_i*E_I)/(K_meI+E_I) + (V_f_i+F_I)/(K_mfI+F_I)
 
             return [dAdt, dF_Bdt, dE_Bdt, dF_CBGdt, dF_Albdt, dE_CBGdt, dE_Albdt, dCBGdt, dAlbdt, dF_Idt, dE_Idt]
 
