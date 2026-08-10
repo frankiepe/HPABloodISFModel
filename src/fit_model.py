@@ -23,10 +23,10 @@ parser.add_argument('-i', '--ind', type = int, help='Select data index')
 parser.add_argument('-w', '--warmup', type = int, default=5, help='No. of days of warmup (to reach steady state)')
 parser.add_argument('-s', '--step', type=float, default=0.1, help='Step size for dde solver (must be sufficiently small for convergence)')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
-parser.add_argument('-f', '--fixed_pars', type=str, nargs='*', help='Parameters to fix (i.e. not fit)')
+parser.add_argument('-f', '--fixed', type=str, nargs='*', help='Parameters to fix (i.e. not fit)')
 args = parser.parse_args()
 
-def get_pars(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
+def get_pars(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
     # Get config file
     init_pars_file = f'configs/{model_dict[m_n]}/test_parameters.json'
 
@@ -36,7 +36,20 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
 
     # Get parameters from config
     init_pars = config.get('parameters', {})
+    fixed_pars = init_pars.copy()
+
+    # Filter fixed vs. non-fixed parameters
+    all_par_keys = list(init_pars.keys())
+    for par_key in all_par_keys:
+        if par_key in fixed:
+            init_pars.pop(par_key)
+        else:
+            fixed_pars.pop(par_key)
+
+    # Get initial conditions
     ics = config.get('initial_conditions', {})
+
+    # Get total number of simulation days
     num_days = warmup+days_to_keep
 
     # Create time array
@@ -68,11 +81,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
         m_wrap = mc.ModelBlood
 
     # Define model
-    dde_model = model(parameters=init_pars, init_conds=ics, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
-
-    # Fix parameters
-    if fixed_pars is not None:
-        dde_model.set_fix_parameters({i:init_pars[i] for i in fixed_pars})
+    dde_model = model(parameters=init_pars, fixed_pars=fixed_pars, init_conds=ics, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
 
     # Wrap in blood or ISF model for fitting
     if m_n in [1,2,3,6]:
@@ -111,9 +120,9 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
     # Define Pints optimiser
     opt = pints.OptimisationController(
             f, q0, boundaries=bounds, method=pints.CMAES)
-    opt.set_max_iterations(150)
+    opt.set_max_iterations(2)
     opt.set_log_interval(iters=10, warm_up=10)
-    opt.set_function_tolerance(iterations=20, threshold=1e-2)
+    opt.set_function_tolerance(iterations=20, threshold=1e-3)
 
     # Simulate initial parameterisation
     res_init = dde_model.simulate(q0, times, fitting=False)
@@ -129,16 +138,6 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
     print(f"Fitting {model_dict[m_n]}...")
     p, s = opt.run()
 
-    # Ensure fixed parameters are stored correctly
-    if fixed_pars is not None:
-        final_pars = init_pars.copy()
-        param_keys = list(init_pars.keys())
-        for i, key in enumerate(param_keys):
-            if key not in fixed_pars:
-                final_pars[key] = p[i]
-            else:
-                p[i] = init_pars[key]
-
     # Simulate optimised parameterisation
     res_fit = dde_model.simulate(p, times, fitting=False)
 
@@ -146,7 +145,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed_pars, days_to_keep=1):
     plotting.plot_model_output(m_n, res_fit, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, outdir=outdir,
                                filename=f'model_fit_output_ind{d_n}_step{step}', days_to_keep=1, plot_data=True, d_n=d_n)
 
-    return p, s 
+    return p, s, init_pars 
 
 if __name__ == "__main__":
     # read parsed variables
@@ -155,7 +154,7 @@ if __name__ == "__main__":
     warmup = args.warmup
     step = args.step
     outdir = args.outdir
-    fixed_pars = args.fixed_pars
+    fixed = args.fixed
 
     repeats = 1 #todo
 
@@ -168,11 +167,11 @@ if __name__ == "__main__":
         os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots')
 
     # Perform fitting    
-    pars, sc = get_pars(m_n, d_n, warmup, step, outdir, fixed_pars)
+    pars, sc, ips = get_pars(m_n, d_n, warmup, step, outdir, fixed)
 
     # Save fitted parameters
     with open(f"output/{outdir}/{model_dict[m_n]}/fits/fit_step{step}_dataid{d_n}.csv", 'w') as f:
-        f.write('"rep","pars","score"')
+        f.write('"rep","fitted_pars","values","score"')
         f.write("\n")
         writer = csv.writer(f)
-        writer.writerows(zip(np.arange(1, repeats+1, 1), [pars], [sc]))
+        writer.writerows(zip(np.arange(1, repeats+1, 1), [ips.keys()], [pars], [sc]))

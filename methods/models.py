@@ -7,6 +7,7 @@ from . import day_len, PARAMETER_BOUNDARIES
 class BaseHPAModel(pints.ForwardModel):
     def __init__(self,
                  parameters,
+                 fixed_pars,
                  init_conds,
                  times,
                  num_days=6,
@@ -17,26 +18,35 @@ class BaseHPAModel(pints.ForwardModel):
         self.step = step
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.fixed_pars = fixed_pars
+        self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.init_conds = init_conds
         self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.set_fix_parameters({})
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
-        if t_s is None: 
-            t_s = self.parameters['t_s']
-        if lambda_a is None: 
-            lambda_a = self.parameters['lambda_a']
-        if lambda_s is None: 
-            lambda_s = self.parameters['lambda_s']
-        if sigma is None: 
-            sigma = self.parameters['sigma']
-        crh = lambda_a * math.e**(lambda_s*math.cos(2*math.pi*((t-t_s)/T_c)+sigma*math.cos(2*math.pi*((t-t_s)/T_c))))
-        if symmetric:
-            # Arbitrary single cosine csh drive (for testing)
-            crh = 70*math.cos(2*math.pi*(t/T_c))+75
-        return crh
+            if symmetric:
+                return 70*math.cos(2*math.pi*(t/T_c)) + 75
+    
+            def _resolve(name, value):
+                if value is not None:
+                    return value
+                if name in self.parameters:
+                    return self.parameters[name]
+                if name in self.fixed_pars:
+                    return self.fixed_pars[name]
+                raise KeyError(f"CRH parameter '{name}' is missing")
+    
+            t_s = _resolve('t_s', t_s)
+            lambda_a = _resolve('lambda_a', lambda_a)
+            lambda_s = _resolve('lambda_s', lambda_s)
+            sigma = _resolve('sigma', sigma)
+    
+            return lambda_a * math.exp(
+                lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
+                                    + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
+            )
 
     def simulate(self, parameters, times, fitting=True):
         
@@ -45,24 +55,28 @@ class BaseHPAModel(pints.ForwardModel):
         for i, key in enumerate(param_keys):
             self.parameters[key] = parameters[i]
 
-        # Update fix parameters
-        self._set_fix_parameters(self._fix_parameters)
+        par_dict = {}
+        for par in self.all_pars:
+            if par in self.parameters:
+                par_dict[par] = self.parameters[par]
+            elif par in self.fixed_pars:
+                par_dict[par] = self.fixed_pars[par]
 
         # HPC parameters
-        gamma_a = self.parameters['gamma_a'] # ACTH degradation rate
-        gamma_c = self.parameters['gamma_c'] # Cortisol degradation rate
-        K_a = self.parameters['K_a'] # ACTH receptor half-saturation constant
-        K_c = self.parameters['K_c'] # Cortisol receptor half-saturation constant
-        m_a = self.parameters['m_a'] # Hill coefficient for ACTH-driven CORT production
-        m_c = self.parameters['m_c'] # Hill coefficient for CORT feedback
-        delay = self.parameters['delay'] # Feedback delay from CORT to ACTH
-        alpha = self.parameters['alpha'] # Maximal rate of ACTH-induced CORT production
+        gamma_a = par_dict['gamma_a'] # ACTH degradation rate
+        gamma_c = par_dict['gamma_c'] # Cortisol degradation rate
+        K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
+        K_c = par_dict['K_c'] # Cortisol receptor half-saturation constant
+        m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
+        m_c = par_dict['m_c'] # Hill coefficient for CORT feedback
+        delay = par_dict['delay'] # Feedback delay from CORT to ACTH
+        alpha = par_dict['alpha'] # Maximal rate of ACTH-induced CORT production
 
         # CRH parameters
-        lambda_a = self.parameters['lambda_a'] # Baseline amplitude of CRH drive
-        lambda_s = self.parameters['lambda_s'] # Circadian modulation strength
-        t_s = self.parameters['t_s'] # Circadian phase shift
-        sigma = self.parameters['sigma'] # Asymmetry of circadian drive
+        lambda_a = par_dict['lambda_a'] # Baseline amplitude of CRH drive
+        lambda_s = par_dict['lambda_s'] # Circadian modulation strength
+        t_s = par_dict['t_s'] # Circadian phase shift
+        sigma = par_dict['sigma'] # Asymmetry of circadian drive
 
         # Initial conditions
         A_0 = self.init_conds['A']
@@ -98,15 +112,6 @@ class BaseHPAModel(pints.ForwardModel):
 
         return result
 
-    def set_fix_parameters(self, parameters):
-        # Set/update parameters to a fixed value
-        self._fix_parameters = parameters
-
-    def _set_fix_parameters(self, parameters):
-        # Call to set parameters to a fixed value
-        for p in parameters.keys():
-            self.parameters[p] = parameters[p]
-
     def n_outputs(self):
         return 2
 
@@ -134,6 +139,7 @@ class BaseHPAModel(pints.ForwardModel):
 class HPAModelFEInter(pints.ForwardModel):
     def __init__(self,
                  parameters,
+                 fixed_pars,
                  init_conds,
                  times,
                  num_days=6,
@@ -144,26 +150,35 @@ class HPAModelFEInter(pints.ForwardModel):
         self.step = step
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.fixed_pars = fixed_pars
+        self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.init_conds = init_conds
         self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.set_fix_parameters({})
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
-        if t_s is None: 
-            t_s = self.parameters['t_s']
-        if lambda_a is None: 
-            lambda_a = self.parameters['lambda_a']
-        if lambda_s is None: 
-            lambda_s = self.parameters['lambda_s']
-        if sigma is None: 
-            sigma = self.parameters['sigma']
-        crh = lambda_a * math.e**(lambda_s*math.cos(2*math.pi*((t-t_s)/T_c)+sigma*math.cos(2*math.pi*((t-t_s)/T_c))))
         if symmetric:
-            # Arbitrary single cosine csh drive (for testing)
-            crh = 70*math.cos(2*math.pi*(t/T_c))+75
-        return crh
+            return 70*math.cos(2*math.pi*(t/T_c)) + 75
+
+        def _resolve(name, value):
+            if value is not None:
+                return value
+            if name in self.parameters:
+                return self.parameters[name]
+            if name in self.fixed_pars:
+                return self.fixed_pars[name]
+            raise KeyError(f"CRH parameter '{name}' is missing")
+
+        t_s = _resolve('t_s', t_s)
+        lambda_a = _resolve('lambda_a', lambda_a)
+        lambda_s = _resolve('lambda_s', lambda_s)
+        sigma = _resolve('sigma', sigma)
+
+        return lambda_a * math.exp(
+            lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
+                                + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
+        )
 
     def simulate(self, parameters, times, fitting=True):
         
@@ -172,29 +187,33 @@ class HPAModelFEInter(pints.ForwardModel):
         for i, key in enumerate(param_keys):
             self.parameters[key] = parameters[i]
 
-        # Update fix parameters
-        self._set_fix_parameters(self._fix_parameters)
+        par_dict = {}
+        for par in self.all_pars:
+            if par in self.parameters:
+                par_dict[par] = self.parameters[par]
+            elif par in self.fixed_pars:
+                par_dict[par] = self.fixed_pars[par]
 
         # HPC parameters
-        gamma_a = self.parameters['gamma_a'] # ACTH degradation rate
-        gamma_f = self.parameters['gamma_f'] # Cortisol degradation rate
-        gamma_e = self.parameters['gamma_e'] # Cortisone degradation rate (new param)
-        K_a = self.parameters['K_a'] # ACTH receptor half-saturation constant
-        K_f = self.parameters['K_f'] # Cortisol receptor half-saturation constant
-        k_mf = self.parameters['k_mf'] # Cortisol conc. when reaction rate is half V_f (new param)
-        k_me = self.parameters['k_me'] # Cortisone conc. when reaction rate is half V_e (new param)
-        m_a = self.parameters['m_a'] # Hill coefficient for ACTH-driven CORT production
-        m_f = self.parameters['m_f'] # Hill coefficient for CORT feedback
-        V_f = self.parameters['V_f'] # Max. cortisol to cortisone rate (new param)
-        V_e = self.parameters['V_e'] # Max. cortisone to cortisol rate (new param)
-        delay = self.parameters['delay'] # Feedback delay from CORT to ACTH
-        alpha = self.parameters['alpha'] # Maximal rate of ACTH-induced CORT production
+        gamma_a = par_dict['gamma_a'] # ACTH degradation rate
+        gamma_f = par_dict['gamma_f'] # Cortisol degradation rate
+        gamma_e = par_dict['gamma_e'] # Cortisone degradation rate (new param)
+        K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
+        K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
+        k_mf = par_dict['k_mf'] # Cortisol conc. when reaction rate is half V_f (new param)
+        k_me = par_dict['k_me'] # Cortisone conc. when reaction rate is half V_e (new param)
+        m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
+        m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
+        V_f = par_dict['V_f'] # Max. cortisol to cortisone rate (new param)
+        V_e = par_dict['V_e'] # Max. cortisone to cortisol rate (new param)
+        delay = par_dict['delay'] # Feedback delay from CORT to ACTH
+        alpha = par_dict['alpha'] # Maximal rate of ACTH-induced CORT production
 
         # CRH parameters
-        lambda_a = self.parameters['lambda_a'] # Baseline amplitude of CRH drive
-        lambda_s = self.parameters['lambda_s'] # Circadian modulation strength
-        t_s = self.parameters['t_s'] # Circadian phase shift
-        sigma = self.parameters['sigma'] # Asymmetry of circadian drive
+        lambda_a = par_dict['lambda_a'] # Baseline amplitude of CRH drive
+        lambda_s = par_dict['lambda_s'] # Circadian modulation strength
+        t_s = par_dict['t_s'] # Circadian phase shift
+        sigma = par_dict['sigma'] # Asymmetry of circadian drive
 
         # Initial conditions
         A_0 = self.init_conds['A']
@@ -232,15 +251,6 @@ class HPAModelFEInter(pints.ForwardModel):
 
         return result
 
-    def set_fix_parameters(self, parameters):
-        # Set/update parameters to a fixed value
-        self._fix_parameters = parameters
-
-    def _set_fix_parameters(self, parameters):
-        # Call to set parameters to a fixed value
-        for p in parameters.keys():
-            self.parameters[p] = parameters[p]
-
     def n_outputs(self):
         return 3
 
@@ -268,6 +278,7 @@ class HPAModelFEInter(pints.ForwardModel):
 class HPAModelFEInterCBGAlb(pints.ForwardModel):
     def __init__(self,
                  parameters,
+                 fixed_pars,
                  init_conds,
                  times,
                  num_days=6,
@@ -278,26 +289,35 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         self.step = step
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.fixed_pars = fixed_pars
+        self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.init_conds = init_conds
         self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.set_fix_parameters({})
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
-        if t_s is None: 
-            t_s = self.parameters['t_s']
-        if lambda_a is None: 
-            lambda_a = self.parameters['lambda_a']
-        if lambda_s is None: 
-            lambda_s = self.parameters['lambda_s']
-        if sigma is None: 
-            sigma = self.parameters['sigma']
-        crh = lambda_a * math.e**(lambda_s*math.cos(2*math.pi*((t-t_s)/T_c)+sigma*math.cos(2*math.pi*((t-t_s)/T_c))))
-        if symmetric:
-            # Arbitrary single cosine csh drive (for testing)
-            crh = 70*math.cos(2*math.pi*(t/T_c))+75
-        return crh
+            if symmetric:
+                return 70*math.cos(2*math.pi*(t/T_c)) + 75
+    
+            def _resolve(name, value):
+                if value is not None:
+                    return value
+                if name in self.parameters:
+                    return self.parameters[name]
+                if name in self.fixed_pars:
+                    return self.fixed_pars[name]
+                raise KeyError(f"CRH parameter '{name}' is missing")
+    
+            t_s = _resolve('t_s', t_s)
+            lambda_a = _resolve('lambda_a', lambda_a)
+            lambda_s = _resolve('lambda_s', lambda_s)
+            sigma = _resolve('sigma', sigma)
+    
+            return lambda_a * math.exp(
+                lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
+                                    + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
+            )
 
     def simulate(self, parameters, times, fitting=True):
         
@@ -306,37 +326,41 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         for i, key in enumerate(param_keys):
             self.parameters[key] = parameters[i]
 
-        # Update fix parameters
-        self._set_fix_parameters(self._fix_parameters)
+        par_dict = {}
+        for par in self.all_pars:
+            if par in self.parameters:
+                par_dict[par] = self.parameters[par]
+            elif par in self.fixed_pars:
+                par_dict[par] = self.fixed_pars[par]
 
         # HPC parameters
-        gamma_a = self.parameters['gamma_a'] # ACTH degradation rate
-        gamma_f = self.parameters['gamma_f'] # Cortisol degradation rate
-        gamma_e = self.parameters['gamma_e'] # Cortisone degradation rate
-        K_a = self.parameters['K_a'] # ACTH receptor half-saturation constant
-        K_f = self.parameters['K_f'] # Cortisol receptor half-saturation constant
-        k_mf = self.parameters['k_mf'] # Cortisol conc. when reaction rate is half V_f
-        k_me = self.parameters['k_me'] # Cortisone conc. when reaction rate is half V_e
-        k_1 = self.parameters['k_1'] # F:CBG on-binding rate (new param)
-        k_2 = self.parameters['k_2'] # F:CBG off-binding rate (new param)
-        k_3 = self.parameters['k_3'] # F:Alb on-binding rate (new param)
-        k_4 = self.parameters['k_4'] # F:Alb off-binding rate (new param)
-        k_5 = self.parameters['k_5'] # E:CBG on-binding rate (new param)
-        k_6 = self.parameters['k_6'] # E:CBG off-binding rate (new param)
-        k_7 = self.parameters['k_7'] # E:Alb on-binding rate (new param)
-        k_8 = self.parameters['k_8'] # E:Alb off-binding rate (new param)
-        m_a = self.parameters['m_a'] # Hill coefficient for ACTH-driven CORT production
-        m_f = self.parameters['m_f'] # Hill coefficient for CORT feedback
-        V_f = self.parameters['V_f'] # Max. cortisol to cortisone rate
-        V_e = self.parameters['V_e'] # Max. cortisone to cortisol rate
-        delay = self.parameters['delay'] # Feedback delay from CORT to ACTH
-        alpha = self.parameters['alpha'] # Maximal rate of ACTH-induced CORT production
+        gamma_a = par_dict['gamma_a'] # ACTH degradation rate
+        gamma_f = par_dict['gamma_f'] # Cortisol degradation rate
+        gamma_e = par_dict['gamma_e'] # Cortisone degradation rate
+        K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
+        K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
+        k_mf = par_dict['k_mf'] # Cortisol conc. when reaction rate is half V_f
+        k_me = par_dict['k_me'] # Cortisone conc. when reaction rate is half V_e
+        k_1 = par_dict['k_1'] # F:CBG on-binding rate (new param)
+        k_2 = par_dict['k_2'] # F:CBG off-binding rate (new param)
+        k_3 = par_dict['k_3'] # F:Alb on-binding rate (new param)
+        k_4 = par_dict['k_4'] # F:Alb off-binding rate (new param)
+        k_5 = par_dict['k_5'] # E:CBG on-binding rate (new param)
+        k_6 = par_dict['k_6'] # E:CBG off-binding rate (new param)
+        k_7 = par_dict['k_7'] # E:Alb on-binding rate (new param)
+        k_8 = par_dict['k_8'] # E:Alb off-binding rate (new param)
+        m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
+        m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
+        V_f = par_dict['V_f'] # Max. cortisol to cortisone rate
+        V_e = par_dict['V_e'] # Max. cortisone to cortisol rate
+        delay = par_dict['delay'] # Feedback delay from CORT to ACTH
+        alpha = par_dict['alpha'] # Maximal rate of ACTH-induced CORT production
 
         # CRH parameters
-        lambda_a = self.parameters['lambda_a'] # Baseline amplitude of CRH drive
-        lambda_s = self.parameters['lambda_s'] # Circadian modulation strength
-        t_s = self.parameters['t_s'] # Circadian phase shift
-        sigma = self.parameters['sigma'] # Asymmetry of circadian drive
+        lambda_a = par_dict['lambda_a'] # Baseline amplitude of CRH drive
+        lambda_s = par_dict['lambda_s'] # Circadian modulation strength
+        t_s = par_dict['t_s'] # Circadian phase shift
+        sigma = par_dict['sigma'] # Asymmetry of circadian drive
 
         # Initial conditions
         A_0 = self.init_conds['A']
@@ -387,15 +411,6 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
 
         return result
 
-    def set_fix_parameters(self, parameters):
-        # Set/update parameters to a fixed value
-        self._fix_parameters = parameters
-
-    def _set_fix_parameters(self, parameters):
-        # Call to set parameters to a fixed value
-        for p in parameters.keys():
-            self.parameters[p] = parameters[p]
-
     def n_outputs(self):
         return 9
 
@@ -423,6 +438,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
 class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
     def __init__(self,
                  parameters,
+                 fixed_pars,
                  init_conds,
                  times,
                  num_days=6,
@@ -433,26 +449,35 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         self.step = step
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.fixed_pars = fixed_pars
+        self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.init_conds = init_conds
         self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.set_fix_parameters({})
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
-        if t_s is None: 
-            t_s = self.parameters['t_s']
-        if lambda_a is None: 
-            lambda_a = self.parameters['lambda_a']
-        if lambda_s is None: 
-            lambda_s = self.parameters['lambda_s']
-        if sigma is None: 
-            sigma = self.parameters['sigma']
-        crh = lambda_a * math.e**(lambda_s*math.cos(2*math.pi*((t-t_s)/T_c)+sigma*math.cos(2*math.pi*((t-t_s)/T_c))))
-        if symmetric:
-            # Arbitrary single cosine csh drive (for testing)
-            crh = 70*math.cos(2*math.pi*(t/T_c))+75
-        return crh
+            if symmetric:
+                return 70*math.cos(2*math.pi*(t/T_c)) + 75
+    
+            def _resolve(name, value):
+                if value is not None:
+                    return value
+                if name in self.parameters:
+                    return self.parameters[name]
+                if name in self.fixed_pars:
+                    return self.fixed_pars[name]
+                raise KeyError(f"CRH parameter '{name}' is missing")
+    
+            t_s = _resolve('t_s', t_s)
+            lambda_a = _resolve('lambda_a', lambda_a)
+            lambda_s = _resolve('lambda_s', lambda_s)
+            sigma = _resolve('sigma', sigma)
+    
+            return lambda_a * math.exp(
+                lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
+                                    + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
+            )
 
     def simulate(self, parameters, times, fitting=True):
         
@@ -461,42 +486,46 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         for i, key in enumerate(param_keys):
             self.parameters[key] = parameters[i]
 
-        # Update fix parameters
-        self._set_fix_parameters(self._fix_parameters)
+        par_dict = {}
+        for par in self.all_pars:
+            if par in self.parameters:
+                par_dict[par] = self.parameters[par]
+            elif par in self.fixed_pars:
+                par_dict[par] = self.fixed_pars[par]
 
         # HPC parameters
-        gamma_a = self.parameters['gamma_a'] # ACTH degradation rate
-        gamma_f_b = self.parameters['gamma_f_b'] # Cortisol degradation rate in BP
-        gamma_f_i = self.parameters['gamma_f_i'] # Cortisol degradation rate in ISF (new param)
-        gamma_e_b = self.parameters['gamma_e_b'] # Cortisone degradation rate in BP
-        gamma_e_i = self.parameters['gamma_e_i'] # Cortisone degradation rate in ISF (new param)
-        K_a = self.parameters['K_a'] # ACTH receptor half-saturation constant
-        K_f = self.parameters['K_f'] # Cortisol receptor half-saturation constant
-        k_mf = self.parameters['k_mf'] # Cortisol conc. when reaction rate is half V_f
-        k_me = self.parameters['k_me'] # Cortisone conc. when reaction rate is half V_e
-        k_1 = self.parameters['k_1'] # F:CBG on-binding rate
-        k_2 = self.parameters['k_2'] # F:CBG off-binding rate
-        k_3 = self.parameters['k_3'] # F:Alb on-binding rate
-        k_4 = self.parameters['k_4'] # F:Alb off-binding rate
-        k_5 = self.parameters['k_5'] # E:CBG on-binding rate
-        k_6 = self.parameters['k_6'] # E:CBG off-binding rate
-        k_7 = self.parameters['k_7'] # E:Alb on-binding rate
-        k_8 = self.parameters['k_8'] # E:Alb off-binding rate
-        k_BI = self.parameters['k_BI'] # Permeability constant (new param)
-        m_a = self.parameters['m_a'] # Hill coefficient for ACTH-driven CORT production
-        m_f = self.parameters['m_f'] # Hill coefficient for CORT feedback
-        V_f = self.parameters['V_f'] # Max. cortisol to cortisone rate
-        V_e = self.parameters['V_e'] # Max. cortisone to cortisol rate
-        V_B = self.parameters['V_B'] # Vascular distribution volume (new param)
-        V_I = self.parameters['V_I'] # ISF distribution volume (new param)
-        delay = self.parameters['delay'] # Feedback delay from CORT to ACTH
-        alpha = self.parameters['alpha'] # Maximal rate of ACTH-induced CORT production
+        gamma_a = par_dict['gamma_a'] # ACTH degradation rate
+        gamma_f_b = par_dict['gamma_f_b'] # Cortisol degradation rate in BP
+        gamma_f_i = par_dict['gamma_f_i'] # Cortisol degradation rate in ISF (new param)
+        gamma_e_b = par_dict['gamma_e_b'] # Cortisone degradation rate in BP
+        gamma_e_i = par_dict['gamma_e_i'] # Cortisone degradation rate in ISF (new param)
+        K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
+        K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
+        k_mf = par_dict['k_mf'] # Cortisol conc. when reaction rate is half V_f
+        k_me = par_dict['k_me'] # Cortisone conc. when reaction rate is half V_e
+        k_1 = par_dict['k_1'] # F:CBG on-binding rate
+        k_2 = par_dict['k_2'] # F:CBG off-binding rate
+        k_3 = par_dict['k_3'] # F:Alb on-binding rate
+        k_4 = par_dict['k_4'] # F:Alb off-binding rate
+        k_5 = par_dict['k_5'] # E:CBG on-binding rate
+        k_6 = par_dict['k_6'] # E:CBG off-binding rate
+        k_7 = par_dict['k_7'] # E:Alb on-binding rate
+        k_8 = par_dict['k_8'] # E:Alb off-binding rate
+        k_BI = par_dict['k_BI'] # Permeability constant (new param)
+        m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
+        m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
+        V_f = par_dict['V_f'] # Max. cortisol to cortisone rate
+        V_e = par_dict['V_e'] # Max. cortisone to cortisol rate
+        V_B = par_dict['V_B'] # Vascular distribution volume (new param)
+        V_I = par_dict['V_I'] # ISF distribution volume (new param)
+        delay = par_dict['delay'] # Feedback delay from CORT to ACTH
+        alpha = par_dict['alpha'] # Maximal rate of ACTH-induced CORT production
 
         # CRH parameters
-        lambda_a = self.parameters['lambda_a'] # Baseline amplitude of CRH drive
-        lambda_s = self.parameters['lambda_s'] # Circadian modulation strength
-        t_s = self.parameters['t_s'] # Circadian phase shift
-        sigma = self.parameters['sigma'] # Asymmetry of circadian drive
+        lambda_a = par_dict['lambda_a'] # Baseline amplitude of CRH drive
+        lambda_s = par_dict['lambda_s'] # Circadian modulation strength
+        t_s = par_dict['t_s'] # Circadian phase shift
+        sigma = par_dict['sigma'] # Asymmetry of circadian drive
 
         # Initial conditions
         A_0 = self.init_conds['A']
@@ -552,15 +581,6 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
 
         return result
 
-    def set_fix_parameters(self, parameters):
-        # Set/update parameters to a fixed value
-        self._fix_parameters = parameters
-
-    def _set_fix_parameters(self, parameters):
-        # Call to set parameters to a fixed value
-        for p in parameters.keys():
-            self.parameters[p] = parameters[p]
-
     def n_outputs(self):
         return 11
 
@@ -589,6 +609,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
     def __init__(self,
                  parameters,
                  init_conds,
+                 fixed_pars,
                  times,
                  num_days=6,
                  days_to_keep=1,
@@ -598,26 +619,35 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         self.step = step
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.fixed_pars = fixed_pars
+        self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.init_conds = init_conds
         self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.set_fix_parameters({})
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
-        if t_s is None: 
-            t_s = self.parameters['t_s']
-        if lambda_a is None: 
-            lambda_a = self.parameters['lambda_a']
-        if lambda_s is None: 
-            lambda_s = self.parameters['lambda_s']
-        if sigma is None: 
-            sigma = self.parameters['sigma']
-        crh = lambda_a * math.e**(lambda_s*math.cos(2*math.pi*((t-t_s)/T_c)+sigma*math.cos(2*math.pi*((t-t_s)/T_c))))
-        if symmetric:
-            # Arbitrary single cosine csh drive (for testing)
-            crh = 70*math.cos(2*math.pi*(t/T_c))+75
-        return crh
+            if symmetric:
+                return 70*math.cos(2*math.pi*(t/T_c)) + 75
+    
+            def _resolve(name, value):
+                if value is not None:
+                    return value
+                if name in self.parameters:
+                    return self.parameters[name]
+                if name in self.fixed_pars:
+                    return self.fixed_pars[name]
+                raise KeyError(f"CRH parameter '{name}' is missing")
+    
+            t_s = _resolve('t_s', t_s)
+            lambda_a = _resolve('lambda_a', lambda_a)
+            lambda_s = _resolve('lambda_s', lambda_s)
+            sigma = _resolve('sigma', sigma)
+    
+            return lambda_a * math.exp(
+                lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
+                                    + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
+            )
 
     def simulate(self, parameters, times, fitting=True):
         
@@ -626,46 +656,50 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         for i, key in enumerate(param_keys):
             self.parameters[key] = parameters[i]
 
-        # Update fix parameters
-        self._set_fix_parameters(self._fix_parameters)
+        par_dict = {}
+        for par in self.all_pars:
+            if par in self.parameters:
+                par_dict[par] = self.parameters[par]
+            elif par in self.fixed_pars:
+                par_dict[par] = self.fixed_pars[par]
 
         # HPC parameters
-        gamma_a = self.parameters['gamma_a'] # ACTH degradation rate
-        gamma_f_b = self.parameters['gamma_f_b'] # Cortisol degradation rate in BP
-        gamma_f_i = self.parameters['gamma_f_i'] # Cortisol degradation rate in ISF
-        gamma_e_b = self.parameters['gamma_e_b'] # Cortisone degradation rate in BP
-        gamma_e_i = self.parameters['gamma_e_i'] # Cortisone degradation rate in ISF
-        K_a = self.parameters['K_a'] # ACTH receptor half-saturation constant
-        K_f = self.parameters['K_f'] # Cortisol receptor half-saturation constant
-        k_mfB = self.parameters['k_mfB'] # Cortisol conc. when reaction rate is half V_f_b in BP
-        k_meB = self.parameters['k_meB'] # Cortisone conc. when reaction rate is half V_e_b in BP
-        k_mfI = self.parameters['k_mfI'] # Cortisol conc. when reaction rate is half V_f_i in ISF (new param)
-        k_meI = self.parameters['k_meI'] # Cortisone conc. when reaction rate is half V_e_i in ISF (new param)
-        k_1 = self.parameters['k_1'] # F:CBG on-binding rate
-        k_2 = self.parameters['k_2'] # F:CBG off-binding rate
-        k_3 = self.parameters['k_3'] # F:Alb on-binding rate
-        k_4 = self.parameters['k_4'] # F:Alb off-binding rate
-        k_5 = self.parameters['k_5'] # E:CBG on-binding rate
-        k_6 = self.parameters['k_6'] # E:CBG off-binding rate
-        k_7 = self.parameters['k_7'] # E:Alb on-binding rate
-        k_8 = self.parameters['k_8'] # E:Alb off-binding rate
-        k_BI = self.parameters['k_BI'] # Permeability constant
-        m_a = self.parameters['m_a'] # Hill coefficient for ACTH-driven CORT production
-        m_f = self.parameters['m_f'] # Hill coefficient for CORT feedback
-        V_f_b = self.parameters['V_f_b'] # Max. cortisol to cortisone rate in BP
-        V_e_b = self.parameters['V_e_b'] # Max. cortisone to cortisol rate in BP
-        V_f_i = self.parameters['V_f_i'] # Max. cortisol to cortisone rate in ISF (new param)
-        V_e_i = self.parameters['V_e_i'] # Max. cortisone to cortisol rate in ISF (new param)
-        V_B = self.parameters['V_B'] # Vascular distribution volume
-        V_I = self.parameters['V_I'] # ISF distribution volume
-        delay = self.parameters['delay'] # Feedback delay from CORT to ACTH
-        alpha = self.parameters['alpha'] # Maximal rate of ACTH-induced CORT production
+        gamma_a = par_dict['gamma_a'] # ACTH degradation rate
+        gamma_f_b = par_dict['gamma_f_b'] # Cortisol degradation rate in BP
+        gamma_f_i = par_dict['gamma_f_i'] # Cortisol degradation rate in ISF
+        gamma_e_b = par_dict['gamma_e_b'] # Cortisone degradation rate in BP
+        gamma_e_i = par_dict['gamma_e_i'] # Cortisone degradation rate in ISF
+        K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
+        K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
+        k_mfB = par_dict['k_mfB'] # Cortisol conc. when reaction rate is half V_f_b in BP
+        k_meB = par_dict['k_meB'] # Cortisone conc. when reaction rate is half V_e_b in BP
+        k_mfI = par_dict['k_mfI'] # Cortisol conc. when reaction rate is half V_f_i in ISF (new param)
+        k_meI = par_dict['k_meI'] # Cortisone conc. when reaction rate is half V_e_i in ISF (new param)
+        k_1 = par_dict['k_1'] # F:CBG on-binding rate
+        k_2 = par_dict['k_2'] # F:CBG off-binding rate
+        k_3 = par_dict['k_3'] # F:Alb on-binding rate
+        k_4 = par_dict['k_4'] # F:Alb off-binding rate
+        k_5 = par_dict['k_5'] # E:CBG on-binding rate
+        k_6 = par_dict['k_6'] # E:CBG off-binding rate
+        k_7 = par_dict['k_7'] # E:Alb on-binding rate
+        k_8 = par_dict['k_8'] # E:Alb off-binding rate
+        k_BI = par_dict['k_BI'] # Permeability constant
+        m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
+        m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
+        V_f_b = par_dict['V_f_b'] # Max. cortisol to cortisone rate in BP
+        V_e_b = par_dict['V_e_b'] # Max. cortisone to cortisol rate in BP
+        V_f_i = par_dict['V_f_i'] # Max. cortisol to cortisone rate in ISF (new param)
+        V_e_i = par_dict['V_e_i'] # Max. cortisone to cortisol rate in ISF (new param)
+        V_B = par_dict['V_B'] # Vascular distribution volume
+        V_I = par_dict['V_I'] # ISF distribution volume
+        delay = par_dict['delay'] # Feedback delay from CORT to ACTH
+        alpha = par_dict['alpha'] # Maximal rate of ACTH-induced CORT production
 
         # CRH parameters
-        lambda_a = self.parameters['lambda_a'] # Baseline amplitude of CRH drive
-        lambda_s = self.parameters['lambda_s'] # Circadian modulation strength
-        t_s = self.parameters['t_s'] # Circadian phase shift
-        sigma = self.parameters['sigma'] # Asymmetry of circadian drive
+        lambda_a = par_dict['lambda_a'] # Baseline amplitude of CRH drive
+        lambda_s = par_dict['lambda_s'] # Circadian modulation strength
+        t_s = par_dict['t_s'] # Circadian phase shift
+        sigma = par_dict['sigma'] # Asymmetry of circadian drive
 
         # Initial conditions
         A_0 = self.init_conds['A']
@@ -721,15 +755,6 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
 
         return result
 
-    def set_fix_parameters(self, parameters):
-        # Set/update parameters to a fixed value
-        self._fix_parameters = parameters
-
-    def _set_fix_parameters(self, parameters):
-        # Call to set parameters to a fixed value
-        for p in parameters.keys():
-            self.parameters[p] = parameters[p]
-
     def n_outputs(self):
         return 11
 
@@ -757,6 +782,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
 class HPAModelCRHSupp(pints.ForwardModel):
     def __init__(self,
                  parameters,
+                 fixed_pars,
                  times,
                  num_days=6,
                  days_to_keep=1,
@@ -766,25 +792,34 @@ class HPAModelCRHSupp(pints.ForwardModel):
         self.step = step
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.fixed_pars = fixed_pars
+        self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.times = times
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.set_fix_parameters({})
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
-        if t_s is None: 
-            t_s = self.parameters['t_s']
-        if lambda_a is None: 
-            lambda_a = self.parameters['lambda_a']
-        if lambda_s is None: 
-            lambda_s = self.parameters['lambda_s']
-        if sigma is None: 
-            sigma = self.parameters['sigma']
-        crh = lambda_a * math.e**(lambda_s*math.cos(2*math.pi*((t-t_s)/T_c)+sigma*math.cos(2*math.pi*((t-t_s)/T_c))))
-        if symmetric:
-            # Arbitrary single cosine csh drive (for testing)
-            crh = 70*math.cos(2*math.pi*(t/T_c))+75
-        return crh
+            if symmetric:
+                return 70*math.cos(2*math.pi*(t/T_c)) + 75
+    
+            def _resolve(name, value):
+                if value is not None:
+                    return value
+                if name in self.parameters:
+                    return self.parameters[name]
+                if name in self.fixed_pars:
+                    return self.fixed_pars[name]
+                raise KeyError(f"CRH parameter '{name}' is missing")
+    
+            t_s = _resolve('t_s', t_s)
+            lambda_a = _resolve('lambda_a', lambda_a)
+            lambda_s = _resolve('lambda_s', lambda_s)
+            sigma = _resolve('sigma', sigma)
+    
+            return lambda_a * math.exp(
+                lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
+                                    + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
+            )
 
     def simulate(self, parameters, times, fitting=True):
         
@@ -793,25 +828,29 @@ class HPAModelCRHSupp(pints.ForwardModel):
         for i, key in enumerate(param_keys):
             self.parameters[key] = parameters[i]
 
-        # Update fix parameters
-        self._set_fix_parameters(self._fix_parameters)
+        par_dict = {}
+        for par in self.all_pars:
+            if par in self.parameters:
+                par_dict[par] = self.parameters[par]
+            elif par in self.fixed_pars:
+                par_dict[par] = self.fixed_pars[par]
 
-        K_a = self.parameters['K_a']
-        K_c = self.parameters['K_c']
-        K_h = self.parameters['K_h']
-        alpha = self.parameters['alpha']
-        delay_a = self.parameters['delay_a']
-        delay_h = self.parameters['delay_h']
-        lambda_s = self.parameters['lambda_s']
-        lambda_a = self.parameters['lambda_a']
-        t_s = self.parameters['t_s']
-        m_a = self.parameters['m_a']
-        m_c = self.parameters['m_c']
-        m_h = self.parameters['m_h']
-        sigma = self.parameters['sigma']
-        gamma_a = self.parameters['gamma_a']
-        gamma_c = self.parameters['gamma_c']
-        gamma_h = self.parameters['gamma_h']
+        K_a = par_dict['K_a']
+        K_c = par_dict['K_c']
+        K_h = par_dict['K_h']
+        alpha = par_dict['alpha']
+        delay_a = par_dict['delay_a']
+        delay_h = par_dict['delay_h']
+        lambda_s = par_dict['lambda_s']
+        lambda_a = par_dict['lambda_a']
+        t_s = par_dict['t_s']
+        m_a = par_dict['m_a']
+        m_c = par_dict['m_c']
+        m_h = par_dict['m_h']
+        sigma = par_dict['sigma']
+        gamma_a = par_dict['gamma_a']
+        gamma_c = par_dict['gamma_c']
+        gamma_h = par_dict['gamma_h']
 
         # Define the DDE model
         def model(Y, t):
@@ -844,15 +883,6 @@ class HPAModelCRHSupp(pints.ForwardModel):
             result = filtered_output
 
         return result
-
-    def set_fix_parameters(self, parameters):
-        # Set/update parameters to a fixed value
-        self._fix_parameters = parameters
-
-    def _set_fix_parameters(self, parameters):
-        # Call to set parameters to a fixed value
-        for p in parameters.keys():
-            self.parameters[p] = parameters[p]
 
     def n_outputs(self):
         return 3
