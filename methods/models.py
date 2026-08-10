@@ -74,7 +74,7 @@ class BaseHPAModel(pints.ForwardModel):
         K_c = par_dict['K_c'] # Cortisol receptor half-saturation constant
         m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
         m_c = par_dict['m_c'] # Hill coefficient for CORT feedback
-        delay = par_dict['delay'] # Feedback delay from CORT to ACTH
+        tau = par_dict['tau'] # Feedback delay from CORT to ACTH
         alpha = par_dict['alpha'] # Maximal rate of ACTH-induced CORT production
 
         # CRH parameters
@@ -90,7 +90,7 @@ class BaseHPAModel(pints.ForwardModel):
         # Define the DDE model
         def model(Y, t):
             A, C = Y(t)
-            C_delay = Y(t - delay)[1]
+            C_delay = Y(t - tau)[1]
 
             dAdt = -gamma_a*A + ((K_c**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_c**m_a+C_delay**m_a)
             dCdt = -gamma_c*C + alpha*((A**m_c)/(K_a**m_c + A**m_c))
@@ -222,13 +222,13 @@ class HPAModelFEInter(pints.ForwardModel):
         gamma_e = par_dict['gamma_e'] # Cortisone degradation rate (new param)
         K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
         K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
-        K_mf = par_dict['K_mf'] # Cortisol conc. when reaction rate is half V_f (new param)
-        K_me = par_dict['K_me'] # Cortisone conc. when reaction rate is half V_e (new param)
+        K_mf = par_dict['K_mf'] # Cortisol conc. when F->E reaction rate is half V_f (new param)
+        K_me = par_dict['K_me'] # Cortisone conc. when E->F reaction rate is half V_e (new param)
         m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
         m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
         V_f = par_dict['V_f'] # Max. cortisol to cortisone rate (new param)
         V_e = par_dict['V_e'] # Max. cortisone to cortisol rate (new param)
-        delay = par_dict['delay'] # Feedback delay from CORT to ACTH
+        tau = par_dict['tau'] # Feedback delay from CORT to ACTH
         alpha = par_dict['alpha'] # Maximal rate of ACTH-induced CORT production
 
         # CRH parameters
@@ -245,7 +245,7 @@ class HPAModelFEInter(pints.ForwardModel):
         # Define the DDE model
         def model(Y, t):
             A, F, E = Y(t)
-            F_delay = Y(t - delay)[1]
+            F_delay = Y(t - tau)[1]
 
             dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
             dFdt = -gamma_f*F + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + (V_e*E)/(K_me+E) - (V_f+F)/(K_mf+F)
@@ -361,8 +361,8 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         gamma_e = par_dict['gamma_e'] # Cortisone degradation rate
         K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
         K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
-        K_mf = par_dict['K_mf'] # Cortisol conc. when reaction rate is half V_f
-        K_me = par_dict['K_me'] # Cortisone conc. when reaction rate is half V_e
+        K_mf = par_dict['K_mf'] # Cortisol conc. when F->E reaction rate is half V_f
+        K_me = par_dict['K_me'] # Cortisone conc. when E->F reaction rate is half V_e
         k_1 = par_dict['k_1'] # F:CBG on-binding rate (new param)
         k_2 = par_dict['k_2'] # F:CBG off-binding rate (new param)
         k_3 = par_dict['k_3'] # F:Alb on-binding rate (new param)
@@ -375,7 +375,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
         V_f = par_dict['V_f'] # Max. cortisol to cortisone rate
         V_e = par_dict['V_e'] # Max. cortisone to cortisol rate
-        delay = par_dict['delay'] # Feedback delay from CORT to ACTH
+        tau = par_dict['tau'] # Feedback delay from CORT to ACTH
         alpha = par_dict['alpha'] # Maximal rate of ACTH-induced CORT production
 
         # CRH parameters
@@ -398,7 +398,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         # Define the DDE model
         def model(Y, t):
             A, F, E, F_CBG, F_Alb, E_CBG, E_Alb, CBG, Alb = Y(t)
-            F_delay = Y(t - delay)[1]
+            F_delay = Y(t - tau)[1]
 
             dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
             dFdt = -(gamma_f+k_1*CBG+k_3*Alb)*F + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_2*F_CBG + k_4*F_Alb + \
@@ -523,8 +523,8 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         gamma_e_i = par_dict['gamma_e_i'] # Cortisone degradation rate in ISF (new param)
         K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
         K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
-        K_mf = par_dict['K_mf'] # Cortisol conc. when reaction rate is half V_f
-        K_me = par_dict['K_me'] # Cortisone conc. when reaction rate is half V_e
+        K_mf = par_dict['K_mf'] # Cortisol conc. when F->E reaction rate is half V_f
+        K_me = par_dict['K_me'] # Cortisone conc. when E->F reaction rate is half V_e
         k_1 = par_dict['k_1'] # F:CBG on-binding rate
         k_2 = par_dict['k_2'] # F:CBG off-binding rate
         k_3 = par_dict['k_3'] # F:Alb on-binding rate
@@ -540,7 +540,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         V_e = par_dict['V_e'] # Max. cortisone to cortisol rate
         V_B = par_dict['V_B'] # Vascular distribution volume (new param)
         V_I = par_dict['V_I'] # ISF distribution volume (new param)
-        delay = par_dict['delay'] # Feedback delay from CORT to ACTH
+        tau = par_dict['tau'] # Feedback delay from CORT to ACTH
         alpha = par_dict['alpha'] # Maximal rate of ACTH-induced CORT production
 
         # CRH parameters
@@ -565,7 +565,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         # Define the DDE model
         def model(Y, t):
             A, F_B, E_B, F_CBG, F_Alb, E_CBG, E_Alb, CBG, Alb, F_I, E_I = Y(t)
-            F_delay = Y(t - delay)[1]
+            F_delay = Y(t - tau)[1]
 
             dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
             dF_Bdt = -(gamma_f_b+k_1*CBG+k_3*Alb)*F_B + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_2*F_CBG + k_4*F_Alb + \
@@ -693,10 +693,10 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         gamma_e_i = par_dict['gamma_e_i'] # Cortisone degradation rate in ISF
         K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
         K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
-        K_mfB = par_dict['K_mfB'] # Cortisol conc. when reaction rate is half V_f_b in BP
-        K_meB = par_dict['K_meB'] # Cortisone conc. when reaction rate is half V_e_b in BP
-        K_mfI = par_dict['K_mfI'] # Cortisol conc. when reaction rate is half V_f_i in ISF (new param)
-        K_meI = par_dict['K_meI'] # Cortisone conc. when reaction rate is half V_e_i in ISF (new param)
+        K_mfB = par_dict['K_mfB'] # Cortisol conc. when F->E reaction rate is half V_f_b in BP
+        K_meB = par_dict['K_meB'] # Cortisone conc. when E->F reaction rate is half V_e_b in BP
+        K_mfI = par_dict['K_mfI'] # Cortisol conc. when F->E reaction rate is half V_f_i in ISF (new param)
+        K_meI = par_dict['K_meI'] # Cortisone conc. when E->F reaction rate is half V_e_i in ISF (new param)
         k_1 = par_dict['k_1'] # F:CBG on-binding rate
         k_2 = par_dict['k_2'] # F:CBG off-binding rate
         k_3 = par_dict['k_3'] # F:Alb on-binding rate
@@ -714,7 +714,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         V_e_i = par_dict['V_e_i'] # Max. cortisone to cortisol rate in ISF (new param)
         V_B = par_dict['V_B'] # Vascular distribution volume
         V_I = par_dict['V_I'] # ISF distribution volume
-        delay = par_dict['delay'] # Feedback delay from CORT to ACTH
+        tau = par_dict['tau'] # Feedback delay from CORT to ACTH
         alpha = par_dict['alpha'] # Maximal rate of ACTH-induced CORT production
 
         # CRH parameters
@@ -739,7 +739,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         # Define the DDE model
         def model(Y, t):
             A, F_B, E_B, F_CBG, F_Alb, E_CBG, E_Alb, CBG, Alb, F_I, E_I = Y(t)
-            F_delay = Y(t - delay)[1]
+            F_delay = Y(t - tau)[1]
 
             dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
             dF_Bdt = -(gamma_f_b+k_1*CBG+k_3*Alb)*F_B + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_2*F_CBG + k_4*F_Alb + \
@@ -861,8 +861,8 @@ class HPAModelCRHSupp(pints.ForwardModel):
         K_c = par_dict['K_c']
         K_h = par_dict['K_h']
         alpha = par_dict['alpha']
-        delay_a = par_dict['delay_a']
-        delay_h = par_dict['delay_h']
+        tau_a = par_dict['tau_a']
+        tau_h = par_dict['tau_h']
         lambda_s = par_dict['lambda_s']
         lambda_a = par_dict['lambda_a']
         t_s = par_dict['t_s']
@@ -877,8 +877,8 @@ class HPAModelCRHSupp(pints.ForwardModel):
         # Define the DDE model
         def model(Y, t):
             A, C, H = Y(t)
-            C_delay_a = Y(t - delay_a)[1]
-            C_delay_h = Y(t - delay_h)[1]
+            C_delay_a = Y(t - tau_a)[1]
+            C_delay_h = Y(t - tau_h)[1]
 
             dAdt = -gamma_a*A + ((K_c**m_a)*H)/(K_c**m_a+C_delay_a**m_a)
             dCdt = -gamma_c*C + alpha*((A**m_c)/(K_a**m_c + A**m_c))
