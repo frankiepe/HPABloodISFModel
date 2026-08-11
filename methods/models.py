@@ -117,7 +117,7 @@ class BaseHPAModel(pints.ForwardModel):
 
         if (self.reject == True):
             if (self.reject_parameter_combination(result)):
-                return np.full((len(result), result.ndim), 5000)
+                return np.full((len(result), np.shape(result)[1]), 5000)
 
         return result
 
@@ -164,12 +164,16 @@ class HPAModelFEInter(pints.ForwardModel):
                  fixed_pars,
                  init_conds,
                  times,
+                 signal_range = (7,13),
                  num_days=6,
                  days_to_keep=1,
-                 step=0.1):
+                 step=0.1,
+                 reject=True):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step
+        self.signal_range = signal_range
+        self.reject = reject
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
         self.fixed_pars = fixed_pars
@@ -271,6 +275,10 @@ class HPAModelFEInter(pints.ForwardModel):
             filtered_output = result[indices]
             result = filtered_output
 
+        if (self.reject == True):
+            if (self.reject_parameter_combination(result)):
+                return np.full((len(result), np.shape(result)[1]), 5000)
+
         return result
 
     def n_outputs(self):
@@ -296,19 +304,205 @@ class HPAModelFEInter(pints.ForwardModel):
             upperbounds.append(upperbound)
         
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
+
+    # Function to reject parameter combination if number of peaks are outside a plausible range
+    def reject_parameter_combination(self, result): 
+        for i in range(result.shape[1]):
+            signals, _ = scipy_signal.find_peaks(result[:, i])
+            number_of_signals = len(signals)
+
+            lower_bound, upper_bound = self.signal_range
+
+            if not (lower_bound <= number_of_signals <= upper_bound): 
+                return True
+        
+        return False
+
+class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
+    def __init__(self,
+                 parameters,
+                 fixed_pars,
+                 init_conds,
+                 times,
+                 signal_range = (7,13),
+                 num_days=6,
+                 days_to_keep=1,
+                 step=0.1,
+                 reject=True):
+        self.num_days = num_days
+        self.days_to_keep = days_to_keep
+        self.step = step
+        self.signal_range = signal_range
+        self.reject = reject
+        self.n_parameters_value = len(parameters)
+        self.parameters = parameters
+        self.fixed_pars = fixed_pars
+        self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
+        self.init_conds = init_conds
+        self.times = times
+        self.length_model = day_len
+        self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+
+    def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
+            if symmetric:
+                return 70*math.cos(2*math.pi*(t/T_c)) + 75
     
+            def _resolve(name, value):
+                if value is not None:
+                    return value
+                if name in self.parameters:
+                    return self.parameters[name]
+                if name in self.fixed_pars:
+                    return self.fixed_pars[name]
+                raise KeyError(f"CRH parameter '{name}' is missing")
+    
+            t_s = _resolve('t_s', t_s)
+            lambda_a = _resolve('lambda_a', lambda_a)
+            lambda_s = _resolve('lambda_s', lambda_s)
+            sigma = _resolve('sigma', sigma)
+    
+            return lambda_a * math.exp(
+                lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
+                                    + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
+            )
+
+    def simulate(self, parameters, times, fitting=True):
+        
+        # Assign parameters
+        param_keys = list(self.parameters.keys())
+        for i, key in enumerate(param_keys):
+            self.parameters[key] = parameters[i]
+
+        par_dict = {}
+        for par in self.all_pars:
+            if par in self.parameters:
+                par_dict[par] = self.parameters[par]
+            elif par in self.fixed_pars:
+                par_dict[par] = self.fixed_pars[par]
+
+        # HPC parameters
+        gamma_a = par_dict['gamma_a'] # ACTH degradation rate
+        gamma_f = par_dict['gamma_f'] # Cortisol degradation rate
+        gamma_e = par_dict['gamma_e'] # Cortisone degradation rate
+        K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
+        K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
+        K_mf = par_dict['K_mf'] # Cortisol conc. when F->E reaction rate is half V_f
+        K_me = par_dict['K_me'] # Cortisone conc. when E->F reaction rate is half V_e
+        k_Fon = par_dict['k_Fon'] # F protein on-binding rate (new param)
+        k_Foff = par_dict['k_Foff'] # F protein off-binding rate (new param)
+        k_Eon = par_dict['k_Eon'] # E protein on-binding rate (new param)
+        k_Eoff = par_dict['k_Eoff'] # E protein off-binding rate (new param)
+        m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
+        m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
+        V_f = par_dict['V_f'] # Max. cortisol to cortisone rate
+        V_e = par_dict['V_e'] # Max. cortisone to cortisol rate
+        tau = par_dict['tau'] # Feedback delay from CORT to ACTH
+        alpha = par_dict['alpha'] # Maximal rate of ACTH-induced CORT production
+
+        # CRH parameters
+        lambda_a = par_dict['lambda_a'] # Baseline amplitude of CRH drive
+        lambda_s = par_dict['lambda_s'] # Circadian modulation strength
+        t_s = par_dict['t_s'] # Circadian phase shift
+        sigma = par_dict['sigma'] # Asymmetry of circadian drive
+
+        # Initial conditions
+        A_0 = self.init_conds['A']
+        F_0 = self.init_conds['F']
+        E_0 = self.init_conds['E']
+        F_bound_0 = self.init_conds['F_bound']
+        E_bound_0 = self.init_conds['E_bound']
+
+        # Define the DDE model
+        def model(Y, t):
+            A, F, E, F_bound, E_bound = Y(t)
+            F_delay = Y(t - tau)[1]
+
+            dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
+            dFdt = -(gamma_f+k_Fon)*F + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_Foff*F_bound + \
+                (V_e*E)/(K_me+E) - (V_f+F)/(K_mf+F)
+            dEdt = -(gamma_e+k_Eon)*E + k_Eoff*E_bound - (V_e*E)/(K_me+E) + (V_f+F)/(K_mf+F)
+            dF_bounddt = k_Fon*F - k_Foff*F_bound
+            dE_bounddt = k_Eon*E - k_Eoff*E_bound
+
+            return [dAdt, dFdt, dEdt, dF_bounddt, dE_bounddt]
+
+        # Define initial conditions
+        def initial_conditions(t):
+            return [A_0, F_0, E_0, F_bound_0, E_bound_0]
+        
+        # Run the simulation     
+        result = ddeint(model, initial_conditions, self.times)
+
+        # Truncate to specified range
+        result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
+
+        if fitting:
+            # Find nearest indices
+            indices = np.searchsorted(self.times, times)
+
+            # Pull the filtered values
+            filtered_output = result[indices]
+            result = filtered_output
+
+        if (self.reject == True):
+            if (self.reject_parameter_combination(result)):
+                return np.full((len(result), np.shape(result)[1]), 5000)
+            
+        return result
+
+    def n_outputs(self):
+        return 5
+
+    def n_times(self):
+        return self.length_model*self.num_days
+
+    def n_parameters(self):
+        return self.n_parameters_value
+
+    def get_and_create_boundaries(self):
+        lowerbounds = []
+        upperbounds = []
+
+        for item in self.parameters.keys():
+            lowerbound, upperbound = self.parameter_boundaries.get(item, (None, None))
+            if lowerbound is None or upperbound is None: 
+                print(f'{item} has no defined bounds. Setting to default (0, 1000)')
+                lowerbound, upperbound = (0, 1000)
+            
+            lowerbounds.append(lowerbound)
+            upperbounds.append(upperbound)
+        
+        return pints.RectangularBoundaries(lowerbounds, upperbounds)
+
+    # Function to reject parameter combination if number of peaks are outside a plausible range
+    def reject_parameter_combination(self, result): 
+        for i in range(result.shape[1]):
+            signals, _ = scipy_signal.find_peaks(result[:, i])
+            number_of_signals = len(signals)
+
+            lower_bound, upper_bound = self.signal_range
+
+            if not (lower_bound <= number_of_signals <= upper_bound): 
+                return True
+        
+        return False
+
 class HPAModelFEInterCBGAlb(pints.ForwardModel):
     def __init__(self,
                  parameters,
                  fixed_pars,
                  init_conds,
                  times,
+                 signal_range = (7,13),
                  num_days=6,
                  days_to_keep=1,
-                 step=0.1):
+                 step=0.1,
+                 reject=True):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step
+        self.signal_range = signal_range
+        self.reject = reject
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
         self.fixed_pars = fixed_pars
@@ -431,6 +625,10 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
             filtered_output = result[indices]
             result = filtered_output
 
+        if (self.reject == True):
+            if (self.reject_parameter_combination(result)):
+                return np.full((len(result), np.shape(result)[1]), 5000)
+
         return result
 
     def n_outputs(self):
@@ -456,6 +654,19 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
             upperbounds.append(upperbound)
         
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
+
+    # Function to reject parameter combination if number of peaks are outside a plausible range
+    def reject_parameter_combination(self, result): 
+        for i in range(result.shape[1]):
+            signals, _ = scipy_signal.find_peaks(result[:, i])
+            number_of_signals = len(signals)
+
+            lower_bound, upper_bound = self.signal_range
+
+            if not (lower_bound <= number_of_signals <= upper_bound): 
+                return True
+        
+        return False
     
 class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
     def __init__(self,
@@ -463,12 +674,16 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
                  fixed_pars,
                  init_conds,
                  times,
+                 signal_range = (7,13),
                  num_days=6,
                  days_to_keep=1,
-                 step=0.1):
+                 step=0.1,
+                 reject=True):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step
+        self.signal_range = signal_range
+        self.reject = reject
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
         self.fixed_pars = fixed_pars
@@ -601,6 +816,10 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
             filtered_output = result[indices]
             result = filtered_output
 
+        if (self.reject == True):
+            if (self.reject_parameter_combination(result)):
+                return np.full((len(result), np.shape(result)[1]), 5000)
+
         return result
 
     def n_outputs(self):
@@ -627,18 +846,35 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
 
+    # Function to reject parameter combination if number of peaks are outside a plausible range
+    def reject_parameter_combination(self, result): 
+        for i in range(result.shape[1]):
+            signals, _ = scipy_signal.find_peaks(result[:, i])
+            number_of_signals = len(signals)
+
+            lower_bound, upper_bound = self.signal_range
+
+            if not (lower_bound <= number_of_signals <= upper_bound): 
+                return True
+        
+        return False
+
 class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
     def __init__(self,
                  parameters,
                  init_conds,
                  fixed_pars,
                  times,
+                 signal_range = (7,13),
                  num_days=6,
                  days_to_keep=1,
-                 step=0.1):
+                 step=0.1,
+                 reject=True):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step
+        self.signal_range = signal_range
+        self.reject = reject
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
         self.fixed_pars = fixed_pars
@@ -775,6 +1011,10 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
             filtered_output = result[indices]
             result = filtered_output
 
+        if (self.reject == True):
+            if (self.reject_parameter_combination(result)):
+                return np.full((len(result), np.shape(result)[1]), 5000)
+
         return result
 
     def n_outputs(self):
@@ -801,17 +1041,34 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
 
+    # Function to reject parameter combination if number of peaks are outside a plausible range
+    def reject_parameter_combination(self, result): 
+        for i in range(result.shape[1]):
+            signals, _ = scipy_signal.find_peaks(result[:, i])
+            number_of_signals = len(signals)
+
+            lower_bound, upper_bound = self.signal_range
+
+            if not (lower_bound <= number_of_signals <= upper_bound): 
+                return True
+        
+        return False
+
 class HPAModelCRHSupp(pints.ForwardModel):
     def __init__(self,
                  parameters,
                  fixed_pars,
                  times,
+                 signal_range = (7,13),
                  num_days=6,
                  days_to_keep=1,
-                 step=0.1):
+                 step=0.1,
+                 reject=True):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step
+        self.signal_range = signal_range
+        self.reject = reject
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
         self.fixed_pars = fixed_pars
@@ -904,6 +1161,10 @@ class HPAModelCRHSupp(pints.ForwardModel):
             filtered_output = result[indices]
             result = filtered_output
 
+        if (self.reject == True):
+            if (self.reject_parameter_combination(result)):
+                return np.full((len(result), np.shape(result)[1]), 5000)
+
         return result
 
     def n_outputs(self):
@@ -929,3 +1190,16 @@ class HPAModelCRHSupp(pints.ForwardModel):
             upperbounds.append(upperbound)
         
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
+
+    # Function to reject parameter combination if number of peaks are outside a plausible range
+    def reject_parameter_combination(self, result): 
+        for i in range(result.shape[1]):
+            signals, _ = scipy_signal.find_peaks(result[:, i])
+            number_of_signals = len(signals)
+
+            lower_bound, upper_bound = self.signal_range
+
+            if not (lower_bound <= number_of_signals <= upper_bound): 
+                return True
+        
+        return False

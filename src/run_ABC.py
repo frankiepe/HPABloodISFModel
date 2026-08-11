@@ -17,9 +17,9 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 
 parser = argparse.ArgumentParser(description='Fit models to data.')
-parser.add_argument('-m', '--model', type = int, help='Select model for optimisation: ' \
-                    '1: BaseHPAModel, 2: HPAModelFEInter, 3: HPAModelFEInterCBGAlb, ' \
-                    '4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
+parser.add_argument('-m', '--model', type = str, help='Select model for optimisation: ' \
+                    '1: BaseHPAModel, 2: HPAModelFEInter, 3a: HPAModelFEInterCBGAlbSimple, ' \
+                    '3b: HPAModelFEInterCBGAlb, 4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
                     '6: HPAModelCRHSupp')
 parser.add_argument('-i', '--ind', type = int, help='Select data index')
 parser.add_argument('-w', '--warmup', type = int, default=5, help='No. of days of warmup (to reach steady state)')
@@ -58,24 +58,27 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
     times = np.arange(0, timesteps, step)
 
     # Initialise model
-    if m_n == 1:
+    if m_n == '1':
         model = models.BaseHPAModel
         m_wrap = mc.ModelBlood
-    elif m_n == 2:
+    elif m_n == '2':
         model = models.HPAModelFEInter
         m_wrap = mc.ModelBloodFEInter
-    elif m_n == 3:
+    elif m_n == '3a':
+        model = models.HPAModelFEInterCBGAlbSimple
+        m_wrap = mc.ModelBloodFEInterCBGAlbSimple
+    elif m_n == '3b':
         model = models.HPAModelFEInterCBGAlb
         m_wrap = mc.ModelBloodFEInterCBGAlb
-    elif m_n == 4:
+    elif m_n == '4':
         model = models.HPAModelFEInterCBGAlbBloodISF
         m_wrap1 = mc.ModelBloodFEInterCBGAlb
         m_wrap2 = mc.ModelISFFEInterCBGAlb
-    elif m_n == 5:
+    elif m_n == '5':
         model = models.HPAModelFEInterBothCBGAlbBloodISF
         m_wrap1 = mc.ModelBloodFEInterCBGAlb
         m_wrap2 = mc.ModelISFFEInterCBGAlb
-    elif m_n == 6:
+    elif m_n == '6':
         model = models.HPAModelCRHSupp
         m_wrap = mc.ModelBlood
 
@@ -83,7 +86,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
     dde_model = model(parameters=init_pars, fixed_pars=fixed_pars, init_conds=ics, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
 
     # Wrap in blood or ISF model for fitting
-    if m_n in [1,2,3,6]:
+    if m_n in ['1','2','3a','3b','6']:
         full_model = m_wrap(dde_model, init_pars, times)
     else:
         full_model1 = m_wrap1(dde_model, init_pars, times)
@@ -97,10 +100,10 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
     timesISF = (sISF - sISF.iloc[0]).dt.total_seconds() / 60
 
     # Define Pints problem for optimisation
-    if m_n in [1,6]:
+    if m_n in ['1','6']:
         problem = pints.MultiOutputProblem(full_model, timesBP, np.array([ACTH, CORT]).T)
         f = pints.MeanSquaredError(problem, weights=[np.mean(CORT)/np.mean(ACTH), 1]) # weighting to account for difference in scale between ACTH and CORT
-    elif m_n in [2,3]:
+    elif m_n in ['2','3a','3b']:
         problem = pints.MultiOutputProblem(full_model, timesBP, np.array([ACTH, CORT, Cortisone]).T)
         f = pints.MeanSquaredError(problem, weights=[np.mean(CORT)/np.mean(ACTH), 1, np.mean(CORT)/np.mean(Cortisone)]) # weighting
     else:
@@ -115,7 +118,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
 
     # Define ABC parameters
     acc_per = 5 # % of parameters accepted 
-    reps = 250
+    reps = 100
 
     # Run ABC
     pars_all = []

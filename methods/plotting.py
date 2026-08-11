@@ -7,23 +7,27 @@ import os
 from . import day_len, model_dict
 
 def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filename='model_output', days_to_keep=1, plot_data=False, d_n=1):
-    if m_n <=3 or m_n == 6:
+    if m_n in ['1', '2', '3a', '3b', '6']:
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
         axes = [ax1, ax2]
-        if m_n == 1 or m_n == 6:
+        if m_n == '1' or m_n == '6':
             ax1.plot(times, res.T[1], label='Cortisol', color='blue')
             ax2.plot(times, res.T[0], label='ACTH', color='orange')
             ax1.set_title('Cortisol in Blood Plasma')
             ax2.set_title('ACTH in Blood Plasma')
-        elif m_n == 2:
+        elif m_n == '2':
             ax1.plot(times, res.T[1], label='Cortisol', color='blue')
             ax1.plot(times, res.T[2], label='Cortisone', color='red')
             ax2.plot(times, res.T[0], label='ACTH', color='orange')
             ax1.set_title('Cortisol and Cortisone in Blood Plasma')
             ax2.set_title('ACTH in Blood Plasma')
         else:
-            F_tot = res.T[1]+res.T[3]+res.T[4]
-            E_tot = res.T[2]+res.T[5]+res.T[6]
+            if m_n == '3a':
+                F_tot = res.T[1]+res.T[3]
+                E_tot = res.T[2]+res.T[4]
+            elif m_n == '3b':
+                F_tot = res.T[1]+res.T[3]+res.T[4]
+                E_tot = res.T[2]+res.T[5]+res.T[6]
             ax1.plot(times, F_tot, label='Total Cortisol', color='blue')
             ax1.plot(times, res.T[1], label='Free Cortisol', color='green')
             ax1.plot(times, E_tot, label='Total Cortisone', color='red')
@@ -62,17 +66,17 @@ def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filenam
         sISF = pd.to_datetime(pd.Series(timesISF))
         timesISF = (sISF - sISF.iloc[0]).dt.total_seconds() / 60
 
-        if m_n in [1,2,6]:
+        if m_n in ['1','2','6']:
             ax1.plot(timesBP, CORT, label='Cortisol data', color='blue', marker='o')
             ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
-            if m_n == 2:
+            if m_n == '2':
                 ax1.plot(timesBP, Cortisone, label='Cortisone data', color='red', marker='o')
-        elif m_n in [3,4,5]:
+        elif m_n in ['3a','3b','4','5']:
             ax1.plot(timesBP, CORT, label='Total Cortisol data', color='blue', marker='o')
             ax1.plot(timesBP, Cortisone, label='Total Cortisone data', color='red', marker='o')
-            if m_n == 3:
+            if m_n in ['3a','3b']:
                 ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
-            elif m_n == 4 or m_n == 5:
+            elif m_n in ['4', '5']:
                 ax2.plot(timesISF, mCORT, label='Free Cortisol data', color='blue', marker='o', alpha=0.5)
                 ax2.plot(timesISF, mCortisone, label='Free Cortisone data', color='red', marker='o', alpha=0.5)
                 ax3.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
@@ -112,10 +116,10 @@ def plot_parameter_histograms(param_values, param_name, hist_file, bins=20):
 
 def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n, d_n, m_traj_file, days_to_keep=1, plot_rejected=False):
 
-    if m_n <=3 or m_n == 6:
+    if m_n in ['1', '2', '3a', '3b', '6']:
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
         axes = [ax1, ax2]
-        if m_n == 1 or m_n == 6:
+        if m_n == '1' or m_n == '6':
             if plot_rejected:
                 for par_i in pars_reject:
                     res = dde_model.simulate(list(par_i), times, fitting=False)
@@ -132,7 +136,7 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
                     ax1.plot(times, res.T[1], color='blue', alpha=0.5)
                     ax2.plot(times, res.T[0], color='orange', alpha=0.5)
             ax1.set_title('Cortisol in Blood Plasma')
-        elif m_n == 2:
+        elif m_n == '2':
             if plot_rejected:
                 for par_i in pars_reject:
                     res = dde_model.simulate(list(par_i), times, fitting=False)
@@ -156,8 +160,12 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
             if plot_rejected:
                 for par_i in pars_reject:
                     res = dde_model.simulate(list(par_i), times, fitting=False)
-                    F_tot = res.T[1]+res.T[3]+res.T[4]
-                    E_tot = res.T[2]+res.T[5]+res.T[6]
+                    if m_n == '3a':
+                        F_tot = res.T[1]+res.T[3]
+                        E_tot = res.T[2]+res.T[4]
+                    elif m_n == '3b':
+                        F_tot = res.T[1]+res.T[3]+res.T[4]
+                        E_tot = res.T[2]+res.T[5]+res.T[6]
                     ax1.plot(times, F_tot, color='grey', alpha=0.1)
                     ax1.plot(times, res.T[1], color='grey', alpha=0.1)
                     ax1.plot(times, E_tot, color='grey', alpha=0.1, linestyle = '--')
@@ -166,8 +174,12 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
             n = 0
             for par_i in pars_accept:
                 res = dde_model.simulate(list(par_i), times, fitting=False)
-                F_tot = res.T[1]+res.T[3]+res.T[4]
-                E_tot = res.T[2]+res.T[5]+res.T[6]
+                if m_n == '3a':
+                    F_tot = res.T[1]+res.T[3]
+                    E_tot = res.T[2]+res.T[4]
+                elif m_n == '3b':
+                    F_tot = res.T[1]+res.T[3]+res.T[4]
+                    E_tot = res.T[2]+res.T[5]+res.T[6]
                 if n == 0:
                     ax1.plot(times, F_tot, label='Total Cortisol', color='blue', alpha=0.5)
                     ax1.plot(times, res.T[1], label='Free Cortisol', color='green', alpha=0.5)
@@ -193,15 +205,15 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
     timesBP = (sBP - sBP.iloc[0]).dt.total_seconds() / 60
     sISF = pd.to_datetime(pd.Series(timesISF))
     timesISF = (sISF - sISF.iloc[0]).dt.total_seconds() / 60
-    if m_n in [1,2,6]:
+    if m_n in ['1','2','6']:
         ax1.plot(timesBP, CORT, label='Cortisol data', color='blue', marker='o')
         ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
-        if m_n == 2:
+        if m_n == '2':
             ax1.plot(timesBP, Cortisone, label='Cortisone data', color='red', marker='o')
-    elif m_n in [3,4,5]:
+    elif m_n in ['3a','3b','4','5']:
         ax1.plot(timesBP, CORT, label='Total Cortisol data', color='blue', marker='o')
         ax1.plot(timesBP, Cortisone, label='Total Cortisone data', color='red', marker='o')
-        if m_n == 3:
+        if m_n in ['3a','3b']:
             ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
     for ax in axes:
         ax.set_xlim(list(times)[0], list(times)[-1])

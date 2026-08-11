@@ -22,6 +22,10 @@ PARAMETER_BOUNDARIES = {
     'K_meB': (0, 1000),
     'K_mfI': (0, 1000),
     'K_meI': (0, 1000),
+    'k_Fon': (0, 1),
+    'k_Foff': (0, 1),
+    'k_Eon': (0, 1),
+    'k_Eoff': (0, 1),
     'k_1': (0, 2.5e-6),
     'k_2': (0, 1e-4),
     'k_3': (0, 2.5e-6),
@@ -53,9 +57,10 @@ PARAMETER_BOUNDARIES = {
     'sigma': (0, 1)
 }
 
-model_dict = {1: 'BaseHPAModel',
-              2: 'HPAModelFEInter',
-              3: 'HPAModelFEInterCBGAlb',
-              4: 'HPAModelFEInterCBGAlbBloodISF',
-              5: 'HPAModelFEInterBothCBGAlbBloodISF',
-              6: 'HPAModelCRHSupp'}
+model_dict = {'1': 'BaseHPAModel',
+              '2': 'HPAModelFEInter',
+              '3a': 'HPAModelFEInterCBGAlbSimple',
+              '3b': 'HPAModelFEInterCBGAlb',
+              '4': 'HPAModelFEInterCBGAlbBloodISF',
+              '5': 'HPAModelFEInterBothCBGAlbBloodISF',
+              '6': 'HPAModelCRHSupp'}

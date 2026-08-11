@@ -10,9 +10,9 @@ import methods.plotting as plotting
 from methods import model_dict, day_len
 
 parser = argparse.ArgumentParser(description='Fit models to data.')
-parser.add_argument('-m', '--model', type = int, help='Select model for optimisation: ' \
-                    '1: BaseHPAModel, 2: HPAModelFEInter, 3: HPAModelFEInterCBGAlb, ' \
-                    '4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
+parser.add_argument('-m', '--model', type = str, help='Select model for optimisation: ' \
+                    '1: BaseHPAModel, 2: HPAModelFEInter, 3a: HPAModelFEInterCBGAlbSimple, ' \
+                    '3b: HPAModelFEInterCBGAlb, 4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
                     '6: HPAModelCRHSupp')
 parser.add_argument('-s', '--step', type=float, help='Step size for dde solver')
 parser.add_argument('-w', '--warmup', type = int, default=5, help='No. of days of warmup (to reach steady state)')
@@ -38,20 +38,22 @@ def run_model(m_n, step, warmup, days_to_keep=1):
     times = np.arange(0, timesteps, step)
 
     # Initialise model
-    if m_n == 1:
+    if m_n == '1':
         model = models.BaseHPAModel
-    elif m_n == 2:
+    elif m_n == '2':
         model = models.HPAModelFEInter
-    elif m_n == 3:
+    elif m_n == '3a':
+        model = models.HPAModelFEInterCBGAlbSimple
+    elif m_n == '3b':
         model = models.HPAModelFEInterCBGAlb
-    elif m_n == 4:
+    elif m_n == '4':
         model = models.HPAModelFEInterCBGAlbBloodISF
-    elif m_n == 5:
+    elif m_n == '5':
         model = models.HPAModelFEInterBothCBGAlbBloodISF
-    elif m_n == 6:
+    elif m_n == '6':
         model = models.HPAModelCRHSupp
 
-    dde_model = model(parameters=pars, init_conds=ics, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
+    dde_model = model(parameters=pars, fixed_pars={}, init_conds=ics, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
 
     # Get plotting times (some cropping may occur if day_len/step != whole number)
     plot_times = times[int((day_len/step)*(num_days-days_to_keep)):] - (day_len)*(num_days-days_to_keep)
