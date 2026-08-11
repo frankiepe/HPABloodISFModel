@@ -28,7 +28,7 @@ parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting out
 parser.add_argument('-f', '--fixed', type=str, nargs='*', help='Parameters to fix (i.e. not fit)')
 args = parser.parse_args()
 
-def run_ABC(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
+def run_ABC(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1, traj=False):
     # Get config file
     init_pars_file = f'configs/{model_dict[m_n]}/test_parameters.json'
 
@@ -109,22 +109,22 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
     else:
         problem1 = pints.MultiOutputProblem(full_model1, timesBP, np.array([ACTH, CORT, Cortisone]).T)
         problem2 = pints.MultiOutputProblem(full_model2, timesISF, np.array([mCORT, mCortisone]).T)
-        f1 = pints.MeanSquaredError(problem1)
-        f2 = pints.MeanSquaredError(problem2)
+        f1 = pints.MeanSquaredError(problem1, weights=[np.mean(CORT)/np.mean(ACTH), 1, np.mean(CORT)/np.mean(Cortisone)])
+        f2 = pints.MeanSquaredError(problem2, weights=[np.mean(CORT)/np.mean(mCORT), np.mean(CORT)/np.mean(mCortisone)])
         f = pints.SumOfErrors([f1,f2])
 
     # Set up model boundaries
     bounds = dde_model.get_and_create_boundaries()
 
     # Define ABC parameters
-    acc_per = 5 # % of parameters accepted 
-    reps = 100
+    acc_per = 2.5 # % of parameters accepted 
+    reps = 2000
 
     # Run ABC
     pars_all = []
     objs = []
     for i in np.arange(0,reps):
-        if i % 10 == 0:
+        if i % 20 == 0:
             print(f"Iteration {i}/{reps}")
         par_i = bounds.sample(1)[0] # sample
         with warnings.catch_warnings(record=True) as caught_warnings:
@@ -149,6 +149,11 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
 
     print(f"Accepted objectives: {sorted_o[:int(reps*(acc_per/100))]}")
 
+    # Save parameters
+    df = pd.DataFrame(sorted_p, columns=init_pars.keys()) 
+    df.insert(0, "Obj", sorted_o)
+    df.to_csv("output/" + outdir + f"/{model_dict[m_n]}/pars" + '/all_pars.csv', index=False)
+
     # Plot histograms of accepted parameters and correlation plot
     if len(pars_accept) > 0:
         for i in np.arange(0, len(init_pars.keys())):
@@ -156,8 +161,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
             param_values = [p[i] for p in pars_accept]
 
             if outdir is not None:
-                os.makedirs("output/" + outdir, exist_ok=True)
-                hist_file = os.path.join("output/" + outdir, f"hist_{param_name}_model{m_n}_step{step}_dataID{d_n}.png")
+                hist_file = os.path.join("output/" + outdir + f"/{model_dict[m_n]}/plots", f"hist_{param_name}_model{m_n}_step{step}_dataID{d_n}.png")
             else:
                 hist_file = f"hist_{param_name}_model{m_n}_step{step}_dataID{d_n}.png"
 
@@ -166,18 +170,18 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
 
         df = pd.DataFrame(pars_accept, columns=init_pars.keys())
         sns.pairplot(df, kind="kde", corner=True)
-        plt.savefig("output/" + outdir + f"/pairplot_model{m_n}_step{step}_dataID{d_n}.png")
+        plt.savefig("output/" + outdir + f"/{model_dict[m_n]}/plots" + f"/pairplot_model{m_n}_step{step}_dataID{d_n}.png")
     else:
         print("No accepted parameters were found; histogram was not created.")
 
     # Plot accepted model trajectories
-    plot_times = times[int((day_len/step)*(num_days-days_to_keep)):] - (day_len)*(num_days-days_to_keep)
-    if outdir is not None:
-        os.makedirs("output/" + outdir, exist_ok=True)
-        m_traj_file = os.path.join("output/" + outdir, f"m_traj_{param_name}_model{m_n}_step{step}_dataID{d_n}.png")
-    else:
-        m_traj_file = f"m_traj_{param_name}_model{m_n}_step{step}_dataID{d_n}.png"
-    plotting.plot_model_trajectories_ABC(dde_model, plot_times, pars_accept, pars_reject, m_n, d_n, m_traj_file)
+    if traj:
+        plot_times = times[int((day_len/step)*(num_days-days_to_keep)):] - (day_len)*(num_days-days_to_keep)
+        if outdir is not None:
+            m_traj_file = os.path.join("output/" + outdir + f"/{model_dict[m_n]}/plots", f"m_traj_{param_name}_model{m_n}_step{step}_dataID{d_n}.png")
+        else:
+            m_traj_file = f"m_traj_{param_name}_model{m_n}_step{step}_dataID{d_n}.png"
+        plotting.plot_model_trajectories_ABC(dde_model, plot_times, pars_accept, pars_reject, m_n, d_n, m_traj_file)
 
 if __name__ == "__main__":
     # Read parsed variables
@@ -187,6 +191,16 @@ if __name__ == "__main__":
     step = args.step
     outdir = args.outdir
     fixed = args.fixed
+    if fixed is None:
+        fixed = {}
+
+    # Make directories if necessary
+    if not os.path.exists(f'output/{outdir}'):
+        os.makedirs(f'output/{outdir}')
+    if not os.path.exists(f'output/{outdir}/{model_dict[m_n]}/pars'):
+        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/pars')
+    if not os.path.exists(f'output/{outdir}/{model_dict[m_n]}/plots'):
+        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots')
 
     # Run ABC experiment
     print("Running ABC experiment...")

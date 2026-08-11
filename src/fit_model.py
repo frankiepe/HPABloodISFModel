@@ -73,11 +73,11 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
         m_wrap = mc.ModelBloodFEInterCBGAlb
     elif m_n == '4':
         model = models.HPAModelFEInterCBGAlbBloodISF
-        m_wrap1 = mc.ModelBloodFEInterCBGAlb
+        m_wrap1 = mc.ModelBloodFEInterCBGAlbSimple
         m_wrap2 = mc.ModelISFFEInterCBGAlb
     elif m_n == '5':
         model = models.HPAModelFEInterBothCBGAlbBloodISF
-        m_wrap1 = mc.ModelBloodFEInterCBGAlb
+        m_wrap1 = mc.ModelBloodFEInterCBGAlbSimple
         m_wrap2 = mc.ModelISFFEInterCBGAlb
     elif m_n == '6':
         model = models.HPAModelCRHSupp
@@ -110,8 +110,8 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
     else:
         problem1 = pints.MultiOutputProblem(full_model1, timesBP, np.array([ACTH, CORT, Cortisone]).T)
         problem2 = pints.MultiOutputProblem(full_model2, timesISF, np.array([mCORT, mCortisone]).T)
-        f1 = pints.MeanSquaredError(problem1)
-        f2 = pints.MeanSquaredError(problem2)
+        f1 = pints.MeanSquaredError(problem1, weights=[np.mean(CORT)/np.mean(ACTH), 1, np.mean(CORT)/np.mean(Cortisone)])
+        f2 = pints.MeanSquaredError(problem2, weights=[np.mean(CORT)/np.mean(mCORT), np.mean(CORT)/np.mean(mCortisone)])
         f = pints.SumOfErrors([f1,f2])
 
     # Set up model boundaries
@@ -158,6 +158,8 @@ if __name__ == "__main__":
     step = args.step
     outdir = args.outdir
     fixed = args.fixed
+    if fixed is None:
+        fixed = {}
 
     repeats = 1 #todo
 

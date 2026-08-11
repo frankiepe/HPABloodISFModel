@@ -84,4 +84,4 @@ class ModelISFFEInterCBGAlb(pints.ForwardModel):
 
     def simulate(self, parameters, times):
         res = self._model.simulate(parameters, times)
-        return np.transpose([res[:, 9], res[:, 10]])
+        return np.transpose([res[:, 5], res[:, 6]])

@@ -41,14 +41,14 @@ def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filenam
     else:
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12))
         axes = [ax1, ax2, ax3]
-        F_tot = res.T[1]+res.T[3]+res.T[4]
-        E_tot = res.T[2]+res.T[5]+res.T[6]
+        F_tot = res.T[1]+res.T[3]
+        E_tot = res.T[2]+res.T[4]
         ax1.plot(times, F_tot, label='Total Cortisol', color='blue')
         ax1.plot(times, res.T[1], label='Free Cortisol', color='green')
         ax1.plot(times, E_tot, label='Total Cortisone', color='red')
         ax1.plot(times, res.T[2], label='Free Cortisone', color='yellow')
-        ax2.plot(times, res.T[9], label='Free Cortisol', color='blue', alpha=0.5)
-        ax2.plot(times, res.T[10], label='Free Cortisone', color='red', alpha=0.5)
+        ax2.plot(times, res.T[5], label='Free Cortisol', color='blue', alpha=0.5)
+        ax2.plot(times, res.T[6], label='Free Cortisone', color='red', alpha=0.5)
         ax3.plot(times, res.T[0], label='ACTH', color='orange')
         ax1.set_ylabel('nmol/L')
         ax2.set_ylabel('nmol/L')
@@ -123,38 +123,38 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
             if plot_rejected:
                 for par_i in pars_reject:
                     res = dde_model.simulate(list(par_i), times, fitting=False)
-                    ax1.plot(times, res.T[1], color='grey', alpha=0.1)
-                    ax2.plot(times, res.T[0], color='grey', alpha=0.1)
+                    ax1.plot(times, res.T[1], color='grey', alpha=0.05)
+                    ax2.plot(times, res.T[0], color='grey', alpha=0.05)
             n = 0
             for par_i in pars_accept:
                 res = dde_model.simulate(list(par_i), times, fitting=False)
                 if n == 0:
-                    ax1.plot(times, res.T[1], label='Cortisol', color='blue', alpha=0.5)
-                    ax2.plot(times, res.T[0], label='ACTH', color='orange', alpha=0.5)
+                    ax1.plot(times, res.T[1], label='Cortisol', color='blue', alpha=0.1)
+                    ax2.plot(times, res.T[0], label='ACTH', color='orange', alpha=0.1)
                     n+=1
                 else:
-                    ax1.plot(times, res.T[1], color='blue', alpha=0.5)
-                    ax2.plot(times, res.T[0], color='orange', alpha=0.5)
+                    ax1.plot(times, res.T[1], color='blue', alpha=0.1)
+                    ax2.plot(times, res.T[0], color='orange', alpha=0.1)
             ax1.set_title('Cortisol in Blood Plasma')
         elif m_n == '2':
             if plot_rejected:
                 for par_i in pars_reject:
                     res = dde_model.simulate(list(par_i), times, fitting=False)
-                    ax1.plot(times, res.T[1], color='grey', alpha=0.1)
-                    ax1.plot(times, res.T[2], color='grey', alpha=0.1, linestyle = '--')
-                    ax2.plot(times, res.T[0], color='grey', alpha=0.1)
+                    ax1.plot(times, res.T[1], color='grey', alpha=0.05)
+                    ax1.plot(times, res.T[2], color='grey', alpha=0.05, linestyle = '--')
+                    ax2.plot(times, res.T[0], color='grey', alpha=0.05)
             n = 0
             for par_i in pars_accept:
                 res = dde_model.simulate(list(par_i), times, fitting=False)
                 if n == 0:
-                    ax1.plot(times, res.T[1], label='Cortisol', color='blue', alpha=0.5)
-                    ax1.plot(times, res.T[2], label='Cortisone', color='red', alpha=0.5)
-                    ax2.plot(times, res.T[0], label='ACTH', color='orange', alpha=0.5)
+                    ax1.plot(times, res.T[1], label='Cortisol', color='blue', alpha=0.1)
+                    ax1.plot(times, res.T[2], label='Cortisone', color='red', alpha=0.1)
+                    ax2.plot(times, res.T[0], label='ACTH', color='orange', alpha=0.1)
                     n+=1
                 else:
-                    ax1.plot(times, res.T[1], color='blue', alpha=0.5)
-                    ax1.plot(times, res.T[2], color='red', alpha=0.5)
-                    ax2.plot(times, res.T[0], color='orange', alpha=0.5)
+                    ax1.plot(times, res.T[1], color='blue', alpha=0.1)
+                    ax1.plot(times, res.T[2], color='red', alpha=0.1)
+                    ax2.plot(times, res.T[0], color='orange', alpha=0.1)
             ax1.set_title('Cortisol and Cortisone in Blood Plasma')
         else:
             if plot_rejected:
@@ -166,11 +166,11 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
                     elif m_n == '3b':
                         F_tot = res.T[1]+res.T[3]+res.T[4]
                         E_tot = res.T[2]+res.T[5]+res.T[6]
-                    ax1.plot(times, F_tot, color='grey', alpha=0.1)
-                    ax1.plot(times, res.T[1], color='grey', alpha=0.1)
-                    ax1.plot(times, E_tot, color='grey', alpha=0.1, linestyle = '--')
-                    ax1.plot(times, res.T[2], color='grey', alpha=0.1, linestyle = '--')
-                    ax2.plot(times, res.T[0], color='grey', alpha=0.1)
+                    ax1.plot(times, F_tot, color='grey', alpha=0.05)
+                    ax1.plot(times, res.T[1], color='grey', alpha=0.05)
+                    ax1.plot(times, E_tot, color='grey', alpha=0.05, linestyle = '--')
+                    ax1.plot(times, res.T[2], color='grey', alpha=0.05, linestyle = '--')
+                    ax2.plot(times, res.T[0], color='grey', alpha=0.05)
             n = 0
             for par_i in pars_accept:
                 res = dde_model.simulate(list(par_i), times, fitting=False)
@@ -181,20 +181,22 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
                     F_tot = res.T[1]+res.T[3]+res.T[4]
                     E_tot = res.T[2]+res.T[5]+res.T[6]
                 if n == 0:
-                    ax1.plot(times, F_tot, label='Total Cortisol', color='blue', alpha=0.5)
-                    ax1.plot(times, res.T[1], label='Free Cortisol', color='green', alpha=0.5)
-                    ax1.plot(times, E_tot, label='Total Cortisone', color='red', alpha=0.5)
-                    ax1.plot(times, res.T[2], label='Free Cortisone', color='yellow', alpha=0.5)
-                    ax2.plot(times, res.T[0], label='ACTH', color='orange', alpha=0.5)
+                    ax1.plot(times, F_tot, label='Total Cortisol', color='blue', alpha=0.1)
+                    ax1.plot(times, res.T[1], label='Free Cortisol', color='green', alpha=0.1)
+                    ax1.plot(times, E_tot, label='Total Cortisone', color='red', alpha=0.1)
+                    ax1.plot(times, res.T[2], label='Free Cortisone', color='yellow', alpha=0.1)
+                    ax2.plot(times, res.T[0], label='ACTH', color='orange', alpha=0.1)
                     n+=1
                 else:
-                    ax1.plot(times, F_tot, color='blue', alpha=0.5)
-                    ax1.plot(times, res.T[1], color='green', alpha=0.5)
-                    ax1.plot(times, E_tot, color='red', alpha=0.5)
-                    ax1.plot(times, res.T[2], color='yellow', alpha=0.5)
-                    ax2.plot(times, res.T[0], color='orange', alpha=0.5)
+                    ax1.plot(times, F_tot, color='blue', alpha=0.1)
+                    ax1.plot(times, res.T[1], color='green', alpha=0.1)
+                    ax1.plot(times, E_tot, color='red', alpha=0.1)
+                    ax1.plot(times, res.T[2], color='yellow', alpha=0.1)
+                    ax2.plot(times, res.T[0], color='orange', alpha=0.1)
             ax1.set_title('Cortisol and Cortisone in Blood Plasma')
         ax2.set_title('ACTH in Blood Plasma')
+    else:
+        print("Not yet implemented...")
     ax1.set_ylabel('nmol/L')
     ax2.set_ylabel('pmol/L')
     ax2.set_xlabel('Time (minutes)')

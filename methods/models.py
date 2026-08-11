@@ -740,14 +740,10 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
         K_mf = par_dict['K_mf'] # Cortisol conc. when F->E reaction rate is half V_f
         K_me = par_dict['K_me'] # Cortisone conc. when E->F reaction rate is half V_e
-        k_1 = par_dict['k_1'] # F:CBG on-binding rate
-        k_2 = par_dict['k_2'] # F:CBG off-binding rate
-        k_3 = par_dict['k_3'] # F:Alb on-binding rate
-        k_4 = par_dict['k_4'] # F:Alb off-binding rate
-        k_5 = par_dict['k_5'] # E:CBG on-binding rate
-        k_6 = par_dict['k_6'] # E:CBG off-binding rate
-        k_7 = par_dict['k_7'] # E:Alb on-binding rate
-        k_8 = par_dict['k_8'] # E:Alb off-binding rate
+        k_Fon = par_dict['k_Fon'] # F protein on-binding rate
+        k_Foff = par_dict['k_Foff'] # F protein off-binding rate
+        k_Eon = par_dict['k_Eon'] # E protein on-binding rate
+        k_Eoff = par_dict['k_Eoff'] # E protein off-binding rate
         k_BI = par_dict['k_BI'] # Permeability constant (new param)
         m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
         m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
@@ -768,39 +764,31 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         A_0 = self.init_conds['A']
         F_B_0 = self.init_conds['F_B']
         E_B_0 = self.init_conds['E_B']
-        F_CBG_0 = self.init_conds['F_CBG']
-        F_Alb_0 = self.init_conds['F_Alb'] 
-        E_CBG_0 = self.init_conds['E_CBG'] 
-        E_Alb_0 = self.init_conds['E_Alb'] 
-        CBG_0 = self.init_conds['CBG'] 
-        Alb_0 = self.init_conds['Alb']
+        F_bound_0 = self.init_conds['F_bound']
+        E_bound_0 = self.init_conds['E_bound']
         F_I_0 = self.init_conds['F_I']
         E_I_0 = self.init_conds['E_I']
 
         # Define the DDE model
         def model(Y, t):
-            A, F_B, E_B, F_CBG, F_Alb, E_CBG, E_Alb, CBG, Alb, F_I, E_I = Y(t)
+            A, F_B, E_B, F_bound, E_bound, F_I, E_I = Y(t)
             F_delay = Y(t - tau)[1]
 
             dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
-            dF_Bdt = -(gamma_f_b+k_1*CBG+k_3*Alb)*F_B + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_2*F_CBG + k_4*F_Alb + \
+            dF_Bdt = -(gamma_f_b+k_Fon)*F_B + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_Foff*F_bound + \
                 (V_e*E_B)/(K_me+E_B) - (V_f+F_B)/(K_mf+F_B) - (k_BI/V_B)*(F_B-F_I)
-            dE_Bdt = -(gamma_e_b+k_5*CBG+k_7*Alb)*E_B + k_6*E_CBG + k_8*E_Alb - (V_e*E_B)/(K_me+E_B) + \
+            dE_Bdt = -(gamma_e_b+k_Eon)*E_B + k_Eoff*E_bound - (V_e*E_B)/(K_me+E_B) + \
                 (V_f+F_B)/(K_mf+F_B) - (k_BI/V_B)*(E_B-E_I)
-            dF_CBGdt = k_1*F_B*CBG - k_2*F_CBG
-            dF_Albdt = k_3*F_B*Alb - k_4*F_Alb
-            dE_CBGdt = k_5*E_B*CBG - k_6*E_CBG
-            dE_Albdt = k_7*E_B*Alb - k_8*E_Alb
-            dCBGdt = k_2*F_CBG - k_1*F_B*CBG + k_6*E_CBG - k_5*E_B*CBG
-            dAlbdt = k_4*F_Alb - k_3*F_B*Alb + k_8*E_Alb - k_7*E_B*Alb
+            dF_bounddt = k_Fon*F_B - k_Foff*F_bound
+            dE_bounddt = k_Eon*E_B - k_Eoff*E_bound
             dF_Idt = (k_BI/V_I)*(F_B-F_I) - gamma_f_i*F_I
             dE_Idt = (k_BI/V_I)*(E_B-E_I) - gamma_e_i*E_I
 
-            return [dAdt, dF_Bdt, dE_Bdt, dF_CBGdt, dF_Albdt, dE_CBGdt, dE_Albdt, dCBGdt, dAlbdt, dF_Idt, dE_Idt]
+            return [dAdt, dF_Bdt, dE_Bdt, dF_bounddt, dE_bounddt, dF_Idt, dE_Idt]
 
         # Define initial conditions
         def initial_conditions(t):
-            return [A_0, F_B_0, E_B_0, F_CBG_0, F_Alb_0, E_CBG_0, E_Alb_0, CBG_0, Alb_0, F_I_0, E_I_0]
+            return [A_0, F_B_0, E_B_0, F_bound_0, E_bound_0, F_I_0, E_I_0]
         
         # Run the simulation     
         result = ddeint(model, initial_conditions, self.times)
@@ -823,7 +811,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         return result
 
     def n_outputs(self):
-        return 11
+        return 7
 
     def n_times(self):
         return self.length_model*self.num_days
@@ -933,14 +921,10 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         K_meB = par_dict['K_meB'] # Cortisone conc. when E->F reaction rate is half V_e_b in BP
         K_mfI = par_dict['K_mfI'] # Cortisol conc. when F->E reaction rate is half V_f_i in ISF (new param)
         K_meI = par_dict['K_meI'] # Cortisone conc. when E->F reaction rate is half V_e_i in ISF (new param)
-        k_1 = par_dict['k_1'] # F:CBG on-binding rate
-        k_2 = par_dict['k_2'] # F:CBG off-binding rate
-        k_3 = par_dict['k_3'] # F:Alb on-binding rate
-        k_4 = par_dict['k_4'] # F:Alb off-binding rate
-        k_5 = par_dict['k_5'] # E:CBG on-binding rate
-        k_6 = par_dict['k_6'] # E:CBG off-binding rate
-        k_7 = par_dict['k_7'] # E:Alb on-binding rate
-        k_8 = par_dict['k_8'] # E:Alb off-binding rate
+        k_Fon = par_dict['k_Fon'] # F protein on-binding rate
+        k_Foff = par_dict['k_Foff'] # F protein off-binding rate
+        k_Eon = par_dict['k_Eon'] # E protein on-binding rate
+        k_Eoff = par_dict['k_Eoff'] # E protein off-binding rate
         k_BI = par_dict['k_BI'] # Permeability constant
         m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
         m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
@@ -963,39 +947,31 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         A_0 = self.init_conds['A']
         F_B_0 = self.init_conds['F_B']
         E_B_0 = self.init_conds['E_B']
-        F_CBG_0 = self.init_conds['F_CBG']
-        F_Alb_0 = self.init_conds['F_Alb'] 
-        E_CBG_0 = self.init_conds['E_CBG'] 
-        E_Alb_0 = self.init_conds['E_Alb'] 
-        CBG_0 = self.init_conds['CBG'] 
-        Alb_0 = self.init_conds['Alb']
+        F_bound_0 = self.init_conds['F_bound']
+        E_bound_0 = self.init_conds['E_bound']
         F_I_0 = self.init_conds['F_I']
         E_I_0 = self.init_conds['E_I']
 
         # Define the DDE model
         def model(Y, t):
-            A, F_B, E_B, F_CBG, F_Alb, E_CBG, E_Alb, CBG, Alb, F_I, E_I = Y(t)
+            A, F_B, E_B, F_bound, E_bound, F_I, E_I = Y(t)
             F_delay = Y(t - tau)[1]
 
             dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
-            dF_Bdt = -(gamma_f_b+k_1*CBG+k_3*Alb)*F_B + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_2*F_CBG + k_4*F_Alb + \
+            dF_Bdt = -(gamma_f_b+k_Fon)*F_B + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_Foff*F_bound + \
                 (V_e_b*E_B)/(K_meB+E_B) - (V_f_b+F_B)/(K_mfB+F_B) - (k_BI/V_B)*(F_B-F_I)
-            dE_Bdt = -(gamma_e_b+k_5*CBG+k_7*Alb)*E_B + k_6*E_CBG + k_8*E_Alb - (V_e_b*E_B)/(K_meB+E_B) + \
+            dE_Bdt = -(gamma_e_b+k_Eon)*E_B + k_Eoff*E_bound - (V_e_b*E_B)/(K_meB+E_B) + \
                 (V_f_b+F_B)/(K_mfB+F_B) - (k_BI/V_B)*(E_B-E_I)
-            dF_CBGdt = k_1*F_B*CBG - k_2*F_CBG
-            dF_Albdt = k_3*F_B*Alb - k_4*F_Alb
-            dE_CBGdt = k_5*E_B*CBG - k_6*E_CBG
-            dE_Albdt = k_7*E_B*Alb - k_8*E_Alb
-            dCBGdt = k_2*F_CBG - k_1*F_B*CBG + k_6*E_CBG - k_5*E_B*CBG
-            dAlbdt = k_4*F_Alb - k_3*F_B*Alb + k_8*E_Alb - k_7*E_B*Alb
+            dF_bounddt = k_Fon*F_B - k_Foff*F_bound
+            dE_bounddt = k_Eon*E_B - k_Eoff*E_bound
             dF_Idt = (k_BI/V_I)*(F_B-F_I) - gamma_f_i*F_I + (V_e_i*E_I)/(K_meI+E_I) - (V_f_i+F_I)/(K_mfI+F_I)
             dE_Idt = (k_BI/V_I)*(E_B-E_I) - gamma_e_i*E_I - (V_e_i*E_I)/(K_meI+E_I) + (V_f_i+F_I)/(K_mfI+F_I)
 
-            return [dAdt, dF_Bdt, dE_Bdt, dF_CBGdt, dF_Albdt, dE_CBGdt, dE_Albdt, dCBGdt, dAlbdt, dF_Idt, dE_Idt]
+            return [dAdt, dF_Bdt, dE_Bdt, dF_bounddt, dE_bounddt, dF_Idt, dE_Idt]
 
         # Define initial conditions
         def initial_conditions(t):
-            return [A_0, F_B_0, E_B_0, F_CBG_0, F_Alb_0, E_CBG_0, E_Alb_0, CBG_0, Alb_0, F_I_0, E_I_0]
+            return [A_0, F_B_0, E_B_0, F_bound_0, E_bound_0, F_I_0, E_I_0]
         
         # Run the simulation     
         result = ddeint(model, initial_conditions, self.times)
@@ -1018,7 +994,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         return result
 
     def n_outputs(self):
-        return 11
+        return 7
 
     def n_times(self):
         return self.length_model*self.num_days
