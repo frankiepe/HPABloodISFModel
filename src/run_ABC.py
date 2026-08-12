@@ -7,14 +7,11 @@ import pandas as pd
 import numpy as np
 import json
 import argparse
-import methods.plotting as plotting
 import methods.models as models
 import methods.classes as mc
 from methods import model_dict, day_len
 import methods.data_processing as dp
 import warnings
-import seaborn as sns
-from matplotlib import pyplot as plt
 
 parser = argparse.ArgumentParser(description='Fit models to data.')
 parser.add_argument('-m', '--model', type = str, help='Select model for optimisation: ' \
@@ -26,9 +23,10 @@ parser.add_argument('-w', '--warmup', type = int, default=5, help='No. of days o
 parser.add_argument('-s', '--step', type=float, default=0.1, help='Step size for dde solver (must be sufficiently small for convergence)')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
 parser.add_argument('-f', '--fixed', type=str, nargs='*', help='Parameters to fix (i.e. not fit)')
+parser.add_argument('-r', '--reps', type=int, default=1000, help='Number of simulation repetitions')
 args = parser.parse_args()
 
-def run_ABC(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1, traj=False):
+def run_ABC(m_n, d_n, warmup, step, outdir, fixed, reps, days_to_keep=1):
     # Get config file
     init_pars_file = f'configs/{model_dict[m_n]}/test_parameters.json'
 
@@ -116,10 +114,6 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1, traj=False):
     # Set up model boundaries
     bounds = dde_model.get_and_create_boundaries()
 
-    # Define ABC parameters
-    acc_per = 2.5 # % of parameters accepted 
-    reps = 2000
-
     # Run ABC
     pars_all = []
     objs = []
@@ -144,44 +138,11 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1, traj=False):
     indices = np.argsort(o_arr)
     sorted_o = o_arr[indices]
     sorted_p = p_arr[indices]
-    pars_accept = sorted_p[:int(reps*(acc_per/100))]
-    pars_reject = sorted_p[int(reps*(acc_per/100)):]
-
-    print(f"Accepted objectives: {sorted_o[:int(reps*(acc_per/100))]}")
 
     # Save parameters
     df = pd.DataFrame(sorted_p, columns=init_pars.keys()) 
     df.insert(0, "Obj", sorted_o)
-    df.to_csv("output/" + outdir + f"/{model_dict[m_n]}/pars" + '/all_pars.csv', index=False)
-
-    # Plot histograms of accepted parameters and correlation plot
-    if len(pars_accept) > 0:
-        for i in np.arange(0, len(init_pars.keys())):
-            param_name = list(init_pars.keys())[i]
-            param_values = [p[i] for p in pars_accept]
-
-            if outdir is not None:
-                hist_file = os.path.join("output/" + outdir + f"/{model_dict[m_n]}/plots", f"hist_{param_name}_model{m_n}_step{step}_dataID{d_n}.png")
-            else:
-                hist_file = f"hist_{param_name}_model{m_n}_step{step}_dataID{d_n}.png"
-
-            plotting.plot_parameter_histograms(param_values, param_name, hist_file)
-            print(f"Saved histogram for '{param_name}' to: {hist_file}")
-
-        df = pd.DataFrame(pars_accept, columns=init_pars.keys())
-        sns.pairplot(df, kind="kde", corner=True)
-        plt.savefig("output/" + outdir + f"/{model_dict[m_n]}/plots" + f"/pairplot_model{m_n}_step{step}_dataID{d_n}.png")
-    else:
-        print("No accepted parameters were found; histogram was not created.")
-
-    # Plot accepted model trajectories
-    if traj:
-        plot_times = times[int((day_len/step)*(num_days-days_to_keep)):] - (day_len)*(num_days-days_to_keep)
-        if outdir is not None:
-            m_traj_file = os.path.join("output/" + outdir + f"/{model_dict[m_n]}/plots", f"m_traj_{param_name}_model{m_n}_step{step}_dataID{d_n}.png")
-        else:
-            m_traj_file = f"m_traj_{param_name}_model{m_n}_step{step}_dataID{d_n}.png"
-        plotting.plot_model_trajectories_ABC(dde_model, plot_times, pars_accept, pars_reject, m_n, d_n, m_traj_file)
+    df.to_csv("output/" + outdir + f"/{model_dict[m_n]}/pars" + f"/all_pars_model{m_n}_step{step}_dataID{d_n}.csv", index=False)
 
 if __name__ == "__main__":
     # Read parsed variables
@@ -193,6 +154,7 @@ if __name__ == "__main__":
     fixed = args.fixed
     if fixed is None:
         fixed = {}
+    reps = args.reps
 
     # Make directories if necessary
     if not os.path.exists(f'output/{outdir}'):
@@ -204,4 +166,4 @@ if __name__ == "__main__":
 
     # Run ABC experiment
     print("Running ABC experiment...")
-    run_ABC(m_n, d_n, warmup, step, outdir, fixed)
+    run_ABC(m_n, d_n, warmup, step, outdir, fixed, reps)
