@@ -23,6 +23,7 @@ class BaseHPAModel(pints.ForwardModel):
         self.reject = reject
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.param_keys = list(self.parameters.keys())
         self.fixed_pars = fixed_pars
         self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.init_conds = init_conds
@@ -54,10 +55,8 @@ class BaseHPAModel(pints.ForwardModel):
             )
 
     def simulate(self, parameters, times, fitting=True):
-        
         # Assign parameters
-        param_keys = list(self.parameters.keys())
-        for i, key in enumerate(param_keys):
+        for i, key in enumerate(self.param_keys):
             self.parameters[key] = parameters[i]
 
         par_dict = {}
@@ -176,6 +175,7 @@ class HPAModelFEInter(pints.ForwardModel):
         self.reject = reject
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.param_keys = list(self.parameters.keys())
         self.fixed_pars = fixed_pars
         self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.init_conds = init_conds
@@ -209,8 +209,7 @@ class HPAModelFEInter(pints.ForwardModel):
     def simulate(self, parameters, times, fitting=True):
         
         # Assign parameters
-        param_keys = list(self.parameters.keys())
-        for i, key in enumerate(param_keys):
+        for i, key in enumerate(self.param_keys):
             self.parameters[key] = parameters[i]
 
         par_dict = {}
@@ -336,6 +335,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         self.reject = reject
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.param_keys = list(self.parameters.keys())
         self.fixed_pars = fixed_pars
         self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.init_conds = init_conds
@@ -369,8 +369,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
     def simulate(self, parameters, times, fitting=True):
         
         # Assign parameters
-        param_keys = list(self.parameters.keys())
-        for i, key in enumerate(param_keys):
+        for i, key in enumerate(self.param_keys):
             self.parameters[key] = parameters[i]
 
         par_dict = {}
@@ -505,6 +504,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         self.reject = reject
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.param_keys = list(self.parameters.keys())
         self.fixed_pars = fixed_pars
         self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.init_conds = init_conds
@@ -538,8 +538,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
     def simulate(self, parameters, times, fitting=True):
         
         # Assign parameters
-        param_keys = list(self.parameters.keys())
-        for i, key in enumerate(param_keys):
+        for i, key in enumerate(self.param_keys):
             self.parameters[key] = parameters[i]
 
         par_dict = {}
@@ -686,6 +685,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         self.reject = reject
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.param_keys = list(self.parameters.keys())
         self.fixed_pars = fixed_pars
         self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.init_conds = init_conds
@@ -719,8 +719,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
     def simulate(self, parameters, times, fitting=True):
         
         # Assign parameters
-        param_keys = list(self.parameters.keys())
-        for i, key in enumerate(param_keys):
+        for i, key in enumerate(self.param_keys):
             self.parameters[key] = parameters[i]
 
         par_dict = {}
@@ -865,6 +864,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         self.reject = reject
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.param_keys = list(self.parameters.keys())
         self.fixed_pars = fixed_pars
         self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.init_conds = init_conds
@@ -898,8 +898,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
     def simulate(self, parameters, times, fitting=True):
         
         # Assign parameters
-        param_keys = list(self.parameters.keys())
-        for i, key in enumerate(param_keys):
+        for i, key in enumerate(self.param_keys):
             self.parameters[key] = parameters[i]
 
         par_dict = {}
@@ -1047,6 +1046,7 @@ class HPAModelCRHSupp(pints.ForwardModel):
         self.reject = reject
         self.n_parameters_value = len(parameters)
         self.parameters = parameters
+        self.param_keys = list(self.parameters.keys())
         self.fixed_pars = fixed_pars
         self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.times = times
@@ -1079,8 +1079,7 @@ class HPAModelCRHSupp(pints.ForwardModel):
     def simulate(self, parameters, times, fitting=True):
         
         # Assign parameters
-        param_keys = list(self.parameters.keys())
-        for i, key in enumerate(param_keys):
+        for i, key in enumerate(self.param_keys):
             self.parameters[key] = parameters[i]
 
         par_dict = {}
