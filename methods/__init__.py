@@ -53,7 +53,7 @@ PARAMETER_BOUNDARIES = {
     'alpha': (0.1, 100),
     'lambda_a': (0, 20),
     'lambda_s': (0, 5),
-    't_s': (-1440, 1440),
+    't_s': (-300, 300),
     'sigma': (0, 1)
 }
 

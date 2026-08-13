@@ -1,5 +1,6 @@
 from matplotlib import pyplot as plt
 import methods.data_processing as dp
+from scipy import stats
 from methods import PARAMETER_BOUNDARIES as pb
 import pandas as pd
 import numpy as np
@@ -102,13 +103,20 @@ def plot_parameter_histograms(param_values, param_name, hist_file, bins=20):
     lb = pb[param_name][0]
     ub = pb[param_name][1]
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.hist(param_values, bins=bins, edgecolor='black', density=True, color="tab:orange", alpha=0.5, label='Posterior')
     ax.axhline(1/(ub-lb), color = 'black', alpha = 0.5)
+    kde = stats.gaussian_kde(param_values)
+    xr = np.linspace(lb, ub, 1000)
+    ax.plot(xr, kde(xr), color = 'black', alpha = 0.5)
     ax.set_title(f"Histogram of accepted values for parameter '{param_name}'")
     ax.set_xlabel(param_name)
     ax.set_ylabel('Density')
     ax.set_xlim(lb, ub)
-    ax.fill_between(np.linspace(lb, ub, 100), 0, 1/(ub-lb), color='tab:blue', alpha=0.4, label='Prior')
+    ax.fill_between(xr, 0, 1/(ub-lb), color='tab:blue', alpha=0.4, label='Prior dist.')
+    ax.axvline(0.5*(ub-lb)+lb, color='tab:blue', alpha = 0.4, linestyle='--', label='Prior mean/median')
+    ax.hist(param_values, bins=bins, edgecolor='black', density=True, color="grey", alpha=0.1, label='Histogram')
+    ax.fill_between(xr, 0, kde(xr), color='tab:orange', alpha=0.4, label='Posterior')
+    ax.axvline(np.mean(param_values), color='tab:orange', alpha = 0.4, linestyle='--', label='Posterior mean')
+    ax.axvline(np.median(param_values), color='tab:orange', alpha = 0.4, linestyle='-.', label='Posterior median')
     ax.legend()
     fig.tight_layout()
     fig.savefig(hist_file)
