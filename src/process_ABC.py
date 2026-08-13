@@ -104,9 +104,9 @@ def process_ABC(m_n, d_n, warmup, step, outdir, fixed, thresh, days_to_keep=1):
     # Plot accepted model trajectories
     plot_times = times[int((day_len/step)*(num_days-days_to_keep)):] - (day_len)*(num_days-days_to_keep)
     if outdir is not None:
-        m_traj_file = os.path.join("output/" + outdir + f"/{model_dict[m_n]}/plots", f"m_traj_{param_name}_model{m_n}_step{step}_dataID{d_n}.png")
+        m_traj_file = os.path.join("output/" + outdir + f"/{model_dict[m_n]}/plots", f"m_traj_model{m_n}_step{step}_dataID{d_n}.png")
     else:
-        m_traj_file = f"m_traj_{param_name}_model{m_n}_step{step}_dataID{d_n}.png"
+        m_traj_file = f"m_traj_model{m_n}_step{step}_dataID{d_n}.png"
     plotting.plot_model_trajectories_ABC(dde_model, plot_times, pars_accept, [], m_n, d_n, m_traj_file)
 
 if __name__ == "__main__":

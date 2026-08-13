@@ -4,6 +4,12 @@ from ddeint import ddeint
 import numpy as np
 from . import day_len, PARAMETER_BOUNDARIES
 from scipy import signal as scipy_signal
+from juliacall import Main as jl
+from juliacall import JuliaError
+jl.seval('using Pkg; Pkg.activate(".")')
+jl.seval("using HPADDEModels")
+jl.seval("using DelayDiffEq, DifferentialEquations, JSON")
+HPADDEModels = jl.seval("HPADDEModels")
 
 class BaseHPAModel(pints.ForwardModel):
     def __init__(self,
@@ -28,8 +34,12 @@ class BaseHPAModel(pints.ForwardModel):
         self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.init_conds = init_conds
         self.times = times
+        self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+        self.alg = jl.MethodOfSteps(jl.Vern6())
+        self.model = HPADDEModels.BaseHPAModel
+        self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
             if symmetric:
@@ -87,25 +97,38 @@ class BaseHPAModel(pints.ForwardModel):
         C_0 = self.init_conds['C']
 
         # Define the DDE model
-        def model(Y, t):
-            A, C = Y(t)
-            C_delay = Y(t - tau)[1]
+        #def model(Y, t):
+        #    A, C = Y(t)
+        #    C_delay = Y(t - tau)[1]
 
-            dAdt = -gamma_a*A + ((K_c**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_c**m_a+C_delay**m_a)
-            dCdt = -gamma_c*C + alpha*((A**m_c)/(K_a**m_c + A**m_c))
+        #    dAdt = -gamma_a*A + ((K_c**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_c**m_a+C_delay**m_a)
+        #    dCdt = -gamma_c*C + alpha*((A**m_c)/(K_a**m_c + A**m_c))
 
-            return [dAdt, dCdt]
+        #    return [dAdt, dCdt]
 
         # Define initial conditions
-        def initial_conditions(t):
-            return [A_0, C_0]
+        #def initial_conditions(t):
+        #    return [A_0, C_0]
         
         # Run the simulation  
-        result = ddeint(model, initial_conditions, self.times)
-
+        #result = ddeint(model, initial_conditions, self.times)
+        
+        u0 = [A_0, C_0]
+        jl.seval(f"h(p, t) = [{A_0}, {C_0}]")
+        h = jl.h
+        
+        lags = [tau]
+        p = (gamma_a, gamma_c, K_a, K_c, m_a, m_c, tau, alpha, lambda_a, lambda_s, t_s, sigma)
+        prob = jl.DDEProblem(self.model, u0, h, self.tspan, p, constant_lags = lags, saveat = self.times)
+        try:
+            result = jl.solve(prob, self.alg, reltol=1e-6, abstol=1e-6)
+        except JuliaError:
+            result = np.full((len(self.init_conds), len(self.times)), 5000) 
+        result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
+        
         # Truncate to specified range
-        result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
-
+        #result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
+        
         if fitting:
             # Find nearest indices
             indices = np.searchsorted(self.times, times)
@@ -117,7 +140,7 @@ class BaseHPAModel(pints.ForwardModel):
         if (self.reject == True):
             if (self.reject_parameter_combination(result)):
                 return np.full((len(result), np.shape(result)[1]), 5000)
-
+        
         return result
 
     def n_outputs(self):

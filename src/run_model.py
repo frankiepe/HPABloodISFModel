@@ -14,7 +14,7 @@ parser.add_argument('-m', '--model', type = str, help='Select model for optimisa
                     '1: BaseHPAModel, 2: HPAModelFEInter, 3a: HPAModelFEInterCBGAlbSimple, ' \
                     '3b: HPAModelFEInterCBGAlb, 4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
                     '6: HPAModelCRHSupp')
-parser.add_argument('-s', '--step', type=float, help='Step size for dde solver')
+parser.add_argument('-s', '--step', type=float, default=0.1, help='Step size for dde solver')
 parser.add_argument('-w', '--warmup', type = int, default=5, help='No. of days of warmup (to reach steady state)')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
 args = parser.parse_args()

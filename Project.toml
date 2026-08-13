@@ -1,0 +1,19 @@
+name = "HPADDEModels"
+uuid = "27e7c99e-c0d9-437d-bedd-499d2d0ba40b"
+version = "0.1.0"
+authors = ["n42353fp "]
+
+[deps]
+DelayDiffEq = "bcd4f6db-9728-5f36-b5f7-82caef46ccdb"
+DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
+Example = "7876af07-990d-54b4-ab0e-23690620f79a"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+Sundials = "c3572dad-4567-51f8-b174-8c6c989267f4"
+
+[compat]
+DelayDiffEq = "6.1.2"
+DifferentialEquations = "8.0.3"
+JSON = "1.7.1"
+Plots = "1.41.0"
+Sundials = "6.5.1"
