@@ -46,27 +46,27 @@ class BaseHPAModel(pints.ForwardModel):
         self.abstol = abstol
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
-            if symmetric:
-                return 70*math.cos(2*math.pi*(t/T_c)) + 75
-    
-            def _resolve(name, value):
-                if value is not None:
-                    return value
-                if name in self.parameters:
-                    return self.parameters[name]
-                if name in self.fixed_pars:
-                    return self.fixed_pars[name]
-                raise KeyError(f"CRH parameter '{name}' is missing")
-    
-            t_s = _resolve('t_s', t_s)
-            lambda_a = _resolve('lambda_a', lambda_a)
-            lambda_s = _resolve('lambda_s', lambda_s)
-            sigma = _resolve('sigma', sigma)
-    
-            return lambda_a * math.exp(
-                lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
-                                    + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
-            )
+        if symmetric:
+            return 70*math.cos(2*math.pi*(t/T_c)) + 75
+
+        def _resolve(name, value):
+            if value is not None:
+                return value
+            if name in self.parameters:
+                return self.parameters[name]
+            if name in self.fixed_pars:
+                return self.fixed_pars[name]
+            raise KeyError(f"CRH parameter '{name}' is missing")
+
+        t_s = _resolve('t_s', t_s)
+        lambda_a = _resolve('lambda_a', lambda_a)
+        lambda_s = _resolve('lambda_s', lambda_s)
+        sigma = _resolve('sigma', sigma)
+
+        return lambda_a * math.exp(
+            lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
+                                + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
+        )
 
     def simulate(self, parameters, times, fitting=True):
         # Assign parameters
@@ -361,27 +361,27 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         self.abstol = abstol
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
-            if symmetric:
-                return 70*math.cos(2*math.pi*(t/T_c)) + 75
-    
-            def _resolve(name, value):
-                if value is not None:
-                    return value
-                if name in self.parameters:
-                    return self.parameters[name]
-                if name in self.fixed_pars:
-                    return self.fixed_pars[name]
-                raise KeyError(f"CRH parameter '{name}' is missing")
-    
-            t_s = _resolve('t_s', t_s)
-            lambda_a = _resolve('lambda_a', lambda_a)
-            lambda_s = _resolve('lambda_s', lambda_s)
-            sigma = _resolve('sigma', sigma)
-    
-            return lambda_a * math.exp(
-                lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
-                                    + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
-            )
+        if symmetric:
+            return 70*math.cos(2*math.pi*(t/T_c)) + 75
+
+        def _resolve(name, value):
+            if value is not None:
+                return value
+            if name in self.parameters:
+                return self.parameters[name]
+            if name in self.fixed_pars:
+                return self.fixed_pars[name]
+            raise KeyError(f"CRH parameter '{name}' is missing")
+
+        t_s = _resolve('t_s', t_s)
+        lambda_a = _resolve('lambda_a', lambda_a)
+        lambda_s = _resolve('lambda_s', lambda_s)
+        sigma = _resolve('sigma', sigma)
+
+        return lambda_a * math.exp(
+            lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
+                                + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
+        )
 
     def simulate(self, parameters, times, fitting=True):
         
@@ -530,27 +530,27 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         self.abstol = abstol
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
-            if symmetric:
-                return 70*math.cos(2*math.pi*(t/T_c)) + 75
-    
-            def _resolve(name, value):
-                if value is not None:
-                    return value
-                if name in self.parameters:
-                    return self.parameters[name]
-                if name in self.fixed_pars:
-                    return self.fixed_pars[name]
-                raise KeyError(f"CRH parameter '{name}' is missing")
-    
-            t_s = _resolve('t_s', t_s)
-            lambda_a = _resolve('lambda_a', lambda_a)
-            lambda_s = _resolve('lambda_s', lambda_s)
-            sigma = _resolve('sigma', sigma)
-    
-            return lambda_a * math.exp(
-                lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
-                                    + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
-            )
+        if symmetric:
+            return 70*math.cos(2*math.pi*(t/T_c)) + 75
+
+        def _resolve(name, value):
+            if value is not None:
+                return value
+            if name in self.parameters:
+                return self.parameters[name]
+            if name in self.fixed_pars:
+                return self.fixed_pars[name]
+            raise KeyError(f"CRH parameter '{name}' is missing")
+
+        t_s = _resolve('t_s', t_s)
+        lambda_a = _resolve('lambda_a', lambda_a)
+        lambda_s = _resolve('lambda_s', lambda_s)
+        sigma = _resolve('sigma', sigma)
+
+        return lambda_a * math.exp(
+            lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
+                                + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
+        )
 
     def simulate(self, parameters, times, fitting=True):
         
@@ -707,27 +707,27 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         self.abstol = abstol
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
-            if symmetric:
-                return 70*math.cos(2*math.pi*(t/T_c)) + 75
-    
-            def _resolve(name, value):
-                if value is not None:
-                    return value
-                if name in self.parameters:
-                    return self.parameters[name]
-                if name in self.fixed_pars:
-                    return self.fixed_pars[name]
-                raise KeyError(f"CRH parameter '{name}' is missing")
-    
-            t_s = _resolve('t_s', t_s)
-            lambda_a = _resolve('lambda_a', lambda_a)
-            lambda_s = _resolve('lambda_s', lambda_s)
-            sigma = _resolve('sigma', sigma)
-    
-            return lambda_a * math.exp(
-                lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
-                                    + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
-            )
+        if symmetric:
+            return 70*math.cos(2*math.pi*(t/T_c)) + 75
+
+        def _resolve(name, value):
+            if value is not None:
+                return value
+            if name in self.parameters:
+                return self.parameters[name]
+            if name in self.fixed_pars:
+                return self.fixed_pars[name]
+            raise KeyError(f"CRH parameter '{name}' is missing")
+
+        t_s = _resolve('t_s', t_s)
+        lambda_a = _resolve('lambda_a', lambda_a)
+        lambda_s = _resolve('lambda_s', lambda_s)
+        sigma = _resolve('sigma', sigma)
+
+        return lambda_a * math.exp(
+            lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
+                                + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
+        )
 
     def simulate(self, parameters, times, fitting=True):
         
@@ -850,15 +850,17 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
 
 class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
     def __init__(self,
-                 parameters,
-                 init_conds,
-                 fixed_pars,
-                 times,
-                 signal_range = (7,13),
-                 num_days=6,
-                 days_to_keep=1,
-                 step=0.1,
-                 reject=True):
+                    parameters,
+                    fixed_pars,
+                    init_conds,
+                    times,
+                    signal_range = (7,13),
+                    num_days=6,
+                    days_to_keep=1,
+                    step=0.1,
+                    reject=True,
+                    reltol=1e-6,
+                    abstol=1e-6):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step
@@ -871,31 +873,37 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.init_conds = init_conds
         self.times = times
+        self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+        self.alg = jl.MethodOfSteps(jl.Vern7())
+        self.model = HPADDEModels.HPAModelFEInterBothCBGAlbBloodISF
+        self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
+        self.reltol = reltol
+        self.abstol = abstol
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
-            if symmetric:
-                return 70*math.cos(2*math.pi*(t/T_c)) + 75
-    
-            def _resolve(name, value):
-                if value is not None:
-                    return value
-                if name in self.parameters:
-                    return self.parameters[name]
-                if name in self.fixed_pars:
-                    return self.fixed_pars[name]
-                raise KeyError(f"CRH parameter '{name}' is missing")
-    
-            t_s = _resolve('t_s', t_s)
-            lambda_a = _resolve('lambda_a', lambda_a)
-            lambda_s = _resolve('lambda_s', lambda_s)
-            sigma = _resolve('sigma', sigma)
-    
-            return lambda_a * math.exp(
-                lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
-                                    + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
-            )
+        if symmetric:
+            return 70*math.cos(2*math.pi*(t/T_c)) + 75
+
+        def _resolve(name, value):
+            if value is not None:
+                return value
+            if name in self.parameters:
+                return self.parameters[name]
+            if name in self.fixed_pars:
+                return self.fixed_pars[name]
+            raise KeyError(f"CRH parameter '{name}' is missing")
+
+        t_s = _resolve('t_s', t_s)
+        lambda_a = _resolve('lambda_a', lambda_a)
+        lambda_s = _resolve('lambda_s', lambda_s)
+        sigma = _resolve('sigma', sigma)
+
+        return lambda_a * math.exp(
+            lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
+                                + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
+        )
 
     def simulate(self, parameters, times, fitting=True):
         
@@ -944,6 +952,11 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         t_s = par_dict['t_s'] # Circadian phase shift
         sigma = par_dict['sigma'] # Asymmetry of circadian drive
 
+        lags = [tau]
+        p = (gamma_a, gamma_f_b, gamma_f_i, gamma_e_b, gamma_e_i, K_a, K_f, K_mfB, 
+             K_meB, K_mfI, K_meI, k_Fon, k_Foff, k_Eon, k_Eoff, k_BI, m_a, m_f, V_f_b,
+             V_e_b, V_f_i, V_e_i, V_B, V_I, tau, alpha, lambda_a, lambda_s, t_s, sigma)
+
         # Initial conditions
         A_0 = self.init_conds['A']
         F_B_0 = self.init_conds['F_B']
@@ -952,33 +965,17 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         E_bound_0 = self.init_conds['E_bound']
         F_I_0 = self.init_conds['F_I']
         E_I_0 = self.init_conds['E_I']
-
-        # Define the DDE model
-        def model(Y, t):
-            A, F_B, E_B, F_bound, E_bound, F_I, E_I = Y(t)
-            F_delay = Y(t - tau)[1]
-
-            dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
-            dF_Bdt = -(gamma_f_b+k_Fon)*F_B + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_Foff*F_bound + \
-                (V_e_b*E_B)/(K_meB+E_B) - (V_f_b+F_B)/(K_mfB+F_B) - (k_BI/V_B)*(F_B-F_I)
-            dE_Bdt = -(gamma_e_b+k_Eon)*E_B + k_Eoff*E_bound - (V_e_b*E_B)/(K_meB+E_B) + \
-                (V_f_b+F_B)/(K_mfB+F_B) - (k_BI/V_B)*(E_B-E_I)
-            dF_bounddt = k_Fon*F_B - k_Foff*F_bound
-            dE_bounddt = k_Eon*E_B - k_Eoff*E_bound
-            dF_Idt = (k_BI/V_I)*(F_B-F_I) - gamma_f_i*F_I + (V_e_i*E_I)/(K_meI+E_I) - (V_f_i+F_I)/(K_mfI+F_I)
-            dE_Idt = (k_BI/V_I)*(E_B-E_I) - gamma_e_i*E_I - (V_e_i*E_I)/(K_meI+E_I) + (V_f_i+F_I)/(K_mfI+F_I)
-
-            return [dAdt, dF_Bdt, dE_Bdt, dF_bounddt, dE_bounddt, dF_Idt, dE_Idt]
-
-        # Define initial conditions
-        def initial_conditions(t):
-            return [A_0, F_B_0, E_B_0, F_bound_0, E_bound_0, F_I_0, E_I_0]
+        u0 = [A_0, F_B_0, E_B_0, F_bound_0, E_bound_0, F_I_0, E_I_0]
+        jl.seval(f"h(p, t) = [{A_0}, {F_B_0}, {E_B_0}, {F_bound_0}, {E_bound_0}, {F_I_0}, {E_I_0}]")
+        h = jl.h
         
-        # Run the simulation     
-        result = ddeint(model, initial_conditions, self.times)
-
-        # Truncate to specified range
-        result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
+        # Define DDE problem and solve
+        prob = jl.DDEProblem(self.model, u0, h, self.tspan, p, constant_lags = lags, saveat = self.times)
+        try:
+            result = jl.solve(prob, self.alg, reltol=self.reltol, abstol=self.abstol)
+        except JuliaError:
+            result = np.full((len(self.init_conds), len(self.times)), 5000) 
+        result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
 
         if fitting:
             # Find nearest indices
@@ -1021,13 +1018,14 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
     # Function to reject parameter combination if number of peaks are outside a plausible range
     def reject_parameter_combination(self, result): 
         for i in range(result.shape[1]):
-            signals, _ = scipy_signal.find_peaks(result[:, i])
-            number_of_signals = len(signals)
+            if i <= 2: # only check first three states
+                signals, _ = scipy_signal.find_peaks(result[:, i])
+                number_of_signals = len(signals)
 
-            lower_bound, upper_bound = self.signal_range
+                lower_bound, upper_bound = self.signal_range
 
-            if not (lower_bound <= number_of_signals <= upper_bound): 
-                return True
+                if not (lower_bound <= number_of_signals <= upper_bound): 
+                    return True
         
         return False
 
