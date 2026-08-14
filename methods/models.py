@@ -21,7 +21,9 @@ class BaseHPAModel(pints.ForwardModel):
                  num_days=6,
                  days_to_keep=1,
                  step=0.1,
-                 reject=True):
+                 reject=True,
+                 reltol=1e-6,
+                 abstol=1e-6):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step
@@ -37,9 +39,11 @@ class BaseHPAModel(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = jl.MethodOfSteps(jl.Vern6())
+        self.alg = jl.MethodOfSteps(jl.Vern7())
         self.model = HPADDEModels.BaseHPAModel
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
+        self.reltol = reltol
+        self.abstol = abstol
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
             if symmetric:
@@ -92,42 +96,23 @@ class BaseHPAModel(pints.ForwardModel):
         t_s = par_dict['t_s'] # Circadian phase shift
         sigma = par_dict['sigma'] # Asymmetry of circadian drive
 
+        lags = [tau]
+        p = (gamma_a, gamma_c, K_a, K_c, m_a, m_c, tau, alpha, lambda_a, lambda_s, t_s, sigma)
+
         # Initial conditions
         A_0 = self.init_conds['A']
         C_0 = self.init_conds['C']
-
-        # Define the DDE model
-        #def model(Y, t):
-        #    A, C = Y(t)
-        #    C_delay = Y(t - tau)[1]
-
-        #    dAdt = -gamma_a*A + ((K_c**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_c**m_a+C_delay**m_a)
-        #    dCdt = -gamma_c*C + alpha*((A**m_c)/(K_a**m_c + A**m_c))
-
-        #    return [dAdt, dCdt]
-
-        # Define initial conditions
-        #def initial_conditions(t):
-        #    return [A_0, C_0]
-        
-        # Run the simulation  
-        #result = ddeint(model, initial_conditions, self.times)
-        
         u0 = [A_0, C_0]
         jl.seval(f"h(p, t) = [{A_0}, {C_0}]")
         h = jl.h
         
-        lags = [tau]
-        p = (gamma_a, gamma_c, K_a, K_c, m_a, m_c, tau, alpha, lambda_a, lambda_s, t_s, sigma)
+        # Define DDE problem and solve
         prob = jl.DDEProblem(self.model, u0, h, self.tspan, p, constant_lags = lags, saveat = self.times)
         try:
-            result = jl.solve(prob, self.alg, reltol=1e-6, abstol=1e-6)
+            result = jl.solve(prob, self.alg, reltol=self.reltol, abstol=self.abstol)
         except JuliaError:
             result = np.full((len(self.init_conds), len(self.times)), 5000) 
         result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
-        
-        # Truncate to specified range
-        #result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
         
         if fitting:
             # Find nearest indices
@@ -190,7 +175,9 @@ class HPAModelFEInter(pints.ForwardModel):
                  num_days=6,
                  days_to_keep=1,
                  step=0.1,
-                 reject=True):
+                 reject=True,
+                 reltol=1e-6,
+                 abstol=1e-6):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step
@@ -203,8 +190,14 @@ class HPAModelFEInter(pints.ForwardModel):
         self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.init_conds = init_conds
         self.times = times
+        self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+        self.alg = jl.MethodOfSteps(jl.Vern7())
+        self.model = HPADDEModels.HPAModelFEInter
+        self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
+        self.reltol = reltol
+        self.abstol = abstol
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if symmetric:
@@ -230,7 +223,6 @@ class HPAModelFEInter(pints.ForwardModel):
         )
 
     def simulate(self, parameters, times, fitting=True):
-        
         # Assign parameters
         for i, key in enumerate(self.param_keys):
             self.parameters[key] = parameters[i]
@@ -263,31 +255,25 @@ class HPAModelFEInter(pints.ForwardModel):
         t_s = par_dict['t_s'] # Circadian phase shift
         sigma = par_dict['sigma'] # Asymmetry of circadian drive
 
+        lags = [tau]
+        p = (gamma_a, gamma_f, gamma_e, K_a, K_f, K_mf, K_me, m_a, m_f, 
+             V_f, V_e, tau, alpha, lambda_a, lambda_s, t_s, sigma)
+
         # Initial conditions
         A_0 = self.init_conds['A']
         F_0 = self.init_conds['F']
         E_0 = self.init_conds['E']
-
-        # Define the DDE model
-        def model(Y, t):
-            A, F, E = Y(t)
-            F_delay = Y(t - tau)[1]
-
-            dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
-            dFdt = -gamma_f*F + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + (V_e*E)/(K_me+E) - (V_f+F)/(K_mf+F)
-            dEdt = -gamma_e*E - (V_e*E)/(K_me+E) + (V_f+F)/(K_mf+F)
-
-            return [dAdt, dFdt, dEdt]
-
-        # Define initial conditions
-        def initial_conditions(t):
-            return [A_0, F_0, E_0]
+        u0 = [A_0, F_0, E_0]
+        jl.seval(f"h(p, t) = [{A_0}, {F_0}, {E_0}]")
+        h = jl.h
         
-        # Run the simulation     
-        result = ddeint(model, initial_conditions, self.times)
-
-        # Truncate to specified range
-        result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
+        # Define DDE problem and solve
+        prob = jl.DDEProblem(self.model, u0, h, self.tspan, p, constant_lags = lags, saveat = self.times)
+        try:
+            result = jl.solve(prob, self.alg, reltol=self.reltol, abstol=self.abstol)
+        except JuliaError:
+            result = np.full((len(self.init_conds), len(self.times)), 5000) 
+        result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
 
         if fitting:
             # Find nearest indices

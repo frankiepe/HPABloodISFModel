@@ -142,7 +142,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, reps, days_to_keep=1):
     # Save parameters
     df = pd.DataFrame(sorted_p, columns=init_pars.keys()) 
     df.insert(0, "Obj", sorted_o)
-    df.to_csv("output/" + outdir + f"/{model_dict[m_n]}/pars" + f"/all_pars_model{m_n}_step{step}_dataID{d_n}.csv", index=False)
+    df.to_csv("output/" + outdir + f"/{model_dict[m_n]}/pars" + f"/all_pars_model{m_n}_dataID{d_n}.csv", index=False)
 
 if __name__ == "__main__":
     # Read parsed variables

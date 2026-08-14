@@ -53,7 +53,8 @@ def run_model(m_n, step, warmup, days_to_keep=1):
     elif m_n == '6':
         model = models.HPAModelCRHSupp
 
-    dde_model = model(parameters=pars, fixed_pars={}, init_conds=ics, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
+    dde_model = model(parameters=pars, fixed_pars={}, init_conds=ics, times=times, 
+                      num_days=num_days, days_to_keep=days_to_keep, step=step)
 
     # Get plotting times (some cropping may occur if day_len/step != whole number)
     plot_times = times[int((day_len/step)*(num_days-days_to_keep)):] - (day_len)*(num_days-days_to_keep)
@@ -78,4 +79,4 @@ if __name__ == "__main__":
         os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots')
 
     res, times, crh_drive = run_model(m_n, step, warmup)
-    plotting.plot_model_output(m_n, res, times, crh_drive, outdir=outdir, filename=f'model_output_step{step}', days_to_keep=1)
+    plotting.plot_model_output(m_n, res, times, crh_drive, outdir=outdir, filename=f'model_output', days_to_keep=1)

@@ -135,7 +135,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
 
     # Plot initial parameterisation
     plotting.plot_model_output(m_n, res_init, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, outdir=outdir,
-                               filename=f'model_init_output_ind{d_n}_step{step}', days_to_keep=1, plot_data=True, d_n=d_n)
+                               filename=f'model_init_output_ind{d_n}', days_to_keep=1, plot_data=True, d_n=d_n)
 
     # Run optimisation
     print(f"Fitting {model_dict[m_n]}...")
@@ -146,7 +146,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
 
     # Plot optimised parameterisation
     plotting.plot_model_output(m_n, res_fit, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, outdir=outdir,
-                               filename=f'model_fit_output_ind{d_n}_step{step}', days_to_keep=1, plot_data=True, d_n=d_n)
+                               filename=f'model_fit_output_ind{d_n}', days_to_keep=1, plot_data=True, d_n=d_n)
 
     return p, s, init_pars 
 
@@ -175,7 +175,7 @@ if __name__ == "__main__":
     pars, sc, ips = get_pars(m_n, d_n, warmup, step, outdir, fixed)
 
     # Save fitted parameters
-    with open(f"output/{outdir}/{model_dict[m_n]}/fits/fit_step{step}_dataid{d_n}.csv", 'w') as f:
+    with open(f"output/{outdir}/{model_dict[m_n]}/fits/fit_dataid{d_n}.csv", 'w') as f:
         f.write('"rep","fitted_pars","values","score"')
         f.write("\n")
         writer = csv.writer(f)

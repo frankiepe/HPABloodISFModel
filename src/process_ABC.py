@@ -73,7 +73,7 @@ def process_ABC(m_n, d_n, warmup, step, outdir, fixed, thresh, days_to_keep=1):
     # Define model
     dde_model = model(parameters=init_pars, fixed_pars=fixed_pars, init_conds=ics, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
 
-    df = pd.read_csv("output/" + outdir + f"/{model_dict[m_n]}/pars" + f"/all_pars_model{m_n}_step{step}_dataID{d_n}.csv")
+    df = pd.read_csv("output/" + outdir + f"/{model_dict[m_n]}/pars" + f"/all_pars_model{m_n}_dataID{d_n}.csv")
     df_thresh = df[df.Obj<=thresh]
     pars_accept = []
     for _, row in df_thresh.iterrows():
@@ -88,25 +88,25 @@ def process_ABC(m_n, d_n, warmup, step, outdir, fixed, thresh, days_to_keep=1):
             param_values = [p[i] for p in pars_accept]
 
             if outdir is not None:
-                hist_file = os.path.join("output/" + outdir + f"/{model_dict[m_n]}/plots", f"hist_{param_name}_model{m_n}_step{step}_dataID{d_n}.png")
+                hist_file = os.path.join("output/" + outdir + f"/{model_dict[m_n]}/plots", f"hist_{param_name}_model{m_n}_dataID{d_n}.png")
             else:
-                hist_file = f"hist_{param_name}_model{m_n}_step{step}_dataID{d_n}.png"
+                hist_file = f"hist_{param_name}_model{m_n}_dataID{d_n}.png"
 
             plotting.plot_parameter_histograms(param_values, param_name, hist_file)
             print(f"Saved histogram for '{param_name}' to: {hist_file}")
 
         df = pd.DataFrame(pars_accept, columns=init_pars.keys())
         sns.pairplot(df, kind="kde", corner=True)
-        plt.savefig("output/" + outdir + f"/{model_dict[m_n]}/plots" + f"/pairplot_model{m_n}_step{step}_dataID{d_n}.png")
+        plt.savefig("output/" + outdir + f"/{model_dict[m_n]}/plots" + f"/pairplot_model{m_n}_dataID{d_n}.png")
     else:
         print("No accepted parameters were found; histogram was not created.")
 
     # Plot accepted model trajectories
     plot_times = times[int((day_len/step)*(num_days-days_to_keep)):] - (day_len)*(num_days-days_to_keep)
     if outdir is not None:
-        m_traj_file = os.path.join("output/" + outdir + f"/{model_dict[m_n]}/plots", f"m_traj_model{m_n}_step{step}_dataID{d_n}.png")
+        m_traj_file = os.path.join("output/" + outdir + f"/{model_dict[m_n]}/plots", f"m_traj_model{m_n}_dataID{d_n}.png")
     else:
-        m_traj_file = f"m_traj_model{m_n}_step{step}_dataID{d_n}.png"
+        m_traj_file = f"m_traj_model{m_n}_dataID{d_n}.png"
     plotting.plot_model_trajectories_ABC(dde_model, plot_times, pars_accept, [], m_n, d_n, m_traj_file)
 
 if __name__ == "__main__":
