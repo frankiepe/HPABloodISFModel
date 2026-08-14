@@ -1,6 +1,7 @@
 module Models
 
-export BaseHPAModel, HPAModelFEInter, crh
+export BaseHPAModel, HPAModelFEInter, HPAModelFEInterCBGAlbSimple, crh
+export HPAModelFEInterCBGAlb
 
 function crh(t, t_s, lambda_a, lambda_s, sigma, T_c=1440)
     lambda_a * exp(lambda_s * cos(2*pi * ((t - t_s) / T_c) + sigma * cos(2*pi * ((t - t_s) / T_c))))
@@ -19,8 +20,34 @@ function HPAModelFEInter(du, u, h, p, t)
     F_delay = h(p, t - tau)[2]
     phi_t = crh(t, t_s, lambda_a, lambda_s, sigma)
     du[1] = -gamma_a * u[1] + ((K_f^m_a)*phi_t)/((K_f^m_a) + (F_delay^m_a))
-    du[2] = -gamma_f * u[2] + alpha*((u[1]^m_f)/((K_a^m_f) + (u[1]^m_f))) + (V_e*u[3])/(K_me+u[3]) - (V_f+u[2])/(K_mf+u[2])
-    du[3] = -gamma_e * u[3] - (V_e*u[3])/(K_me+u[3]) + (V_f+u[2])/(K_mf+u[2])
+    du[2] = -gamma_f * u[2] + alpha*((u[1]^m_f)/((K_a^m_f) + (u[1]^m_f))) + (V_e * u[3])/(K_me + u[3]) - (V_f + u[2])/(K_mf + u[2])
+    du[3] = -gamma_e * u[3] - (V_e * u[3])/(K_me + u[3]) + (V_f + u[2])/(K_mf + u[2])
+end
+
+function HPAModelFEInterCBGAlbSimple(du, u, h, p, t)
+    gamma_a, gamma_f, gamma_e, K_a, K_f, K_mf, K_me, k_Fon, k_Foff, k_Eon, k_Eoff, m_a, m_f, V_f, V_e, tau, alpha, lambda_a, lambda_s, t_s, sigma = p
+    F_delay = h(p, t - tau)[2]
+    phi_t = crh(t, t_s, lambda_a, lambda_s, sigma)
+    du[1] = -gamma_a * u[1] + ((K_f^m_a)*phi_t)/((K_f^m_a) + (F_delay^m_a))
+    du[2] = -(gamma_f + k_Fon) * u[2] + alpha*((u[1]^m_f)/((K_a^m_f) + (u[1]^m_f))) + k_Foff * u[4] + (V_e * u[3])/(K_me + u[3]) - (V_f + u[2])/(K_mf + u[2])
+    du[3] = -(gamma_e + k_Eon) * u[3] + k_Eoff * u[5] - (V_e*u[3])/(K_me+u[3]) + (V_f+u[2])/(K_mf+u[2])
+    du[4] = k_Fon * u[2] - k_Foff * u[4]
+    du[5] = k_Eon * u[3] - k_Eoff * u[5]
+end
+
+function HPAModelFEInterCBGAlb(du, u, h, p, t)
+    gamma_a, gamma_f, gamma_e, K_a, K_f, K_mf, K_me, k_1, k_2, k_3, k_4, k_5, k_6, k_7, k_8, m_a, m_f, V_f, V_e, tau, alpha, lambda_a, lambda_s, t_s, sigma = p
+    F_delay = h(p, t - tau)[2]
+    phi_t = crh(t, t_s, lambda_a, lambda_s, sigma)
+    du[1] = -gamma_a * u[1] + ((K_f^m_a)*phi_t)/((K_f^m_a) + (F_delay^m_a))
+    du[2] = -(gamma_f + k_1*u[8] + k_3*u[9]) * u[2] + alpha*((u[1]^m_f)/((K_a^m_f) + (u[1]^m_f))) + k_2 * u[4] + k_4 * u[5] + (V_e * u[3])/(K_me + u[3]) - (V_f + u[2])/(K_mf + u[2])
+    du[3] = -(gamma_e + k_5*u[8] + k_7*u[9]) * u[3] + k_6 * u[6] + k_8 * u[7] - (V_e*u[3])/(K_me+u[3]) + (V_f+u[2])/(K_mf+u[2])
+    du[4] = k_1 * u[2] * u[8] - k_2 * u[4]
+    du[5] = k_3 * u[2] * u[9] - k_4 * u[5]
+    du[6] = k_5 * u[3] * u[8] - k_6 * u[6]
+    du[7] = k_7 * u[3] * u[9] - k_8 * u[7]
+    du[8] = k_2 * u[4] - k_1 * u[2] * u[8] + k_6 * u[6] - k_5 * u[3] * u[8]
+    du[9] = k_4 * u[5] - k_3 * u[2] * u[9] + k_8 * u[7] - k_7 * u[3] * u[9]
 end
 
 end

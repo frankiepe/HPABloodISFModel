@@ -328,15 +328,17 @@ class HPAModelFEInter(pints.ForwardModel):
 
 class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
     def __init__(self,
-                 parameters,
-                 fixed_pars,
-                 init_conds,
-                 times,
-                 signal_range = (7,13),
-                 num_days=6,
-                 days_to_keep=1,
-                 step=0.1,
-                 reject=True):
+                    parameters,
+                    fixed_pars,
+                    init_conds,
+                    times,
+                    signal_range = (7,13),
+                    num_days=6,
+                    days_to_keep=1,
+                    step=0.1,
+                    reject=True,
+                    reltol=1e-6,
+                    abstol=1e-6):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step
@@ -349,8 +351,14 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.init_conds = init_conds
         self.times = times
+        self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+        self.alg = jl.MethodOfSteps(jl.Vern7())
+        self.model = HPADDEModels.HPAModelFEInterCBGAlbSimple
+        self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
+        self.reltol = reltol
+        self.abstol = abstol
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
             if symmetric:
@@ -413,36 +421,27 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         t_s = par_dict['t_s'] # Circadian phase shift
         sigma = par_dict['sigma'] # Asymmetry of circadian drive
 
+        lags = [tau]
+        p = (gamma_a, gamma_f, gamma_e, K_a, K_f, K_mf, K_me, k_Fon, k_Foff, k_Eon, 
+             k_Eoff, m_a, m_f, V_f, V_e, tau, alpha, lambda_a, lambda_s, t_s, sigma)
+
         # Initial conditions
         A_0 = self.init_conds['A']
         F_0 = self.init_conds['F']
         E_0 = self.init_conds['E']
         F_bound_0 = self.init_conds['F_bound']
         E_bound_0 = self.init_conds['E_bound']
-
-        # Define the DDE model
-        def model(Y, t):
-            A, F, E, F_bound, E_bound = Y(t)
-            F_delay = Y(t - tau)[1]
-
-            dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
-            dFdt = -(gamma_f+k_Fon)*F + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_Foff*F_bound + \
-                (V_e*E)/(K_me+E) - (V_f+F)/(K_mf+F)
-            dEdt = -(gamma_e+k_Eon)*E + k_Eoff*E_bound - (V_e*E)/(K_me+E) + (V_f+F)/(K_mf+F)
-            dF_bounddt = k_Fon*F - k_Foff*F_bound
-            dE_bounddt = k_Eon*E - k_Eoff*E_bound
-
-            return [dAdt, dFdt, dEdt, dF_bounddt, dE_bounddt]
-
-        # Define initial conditions
-        def initial_conditions(t):
-            return [A_0, F_0, E_0, F_bound_0, E_bound_0]
+        u0 = [A_0, F_0, E_0, F_bound_0, E_bound_0]
+        jl.seval(f"h(p, t) = [{A_0}, {F_0}, {E_0}, {F_bound_0}, {E_bound_0}]")
+        h = jl.h
         
-        # Run the simulation     
-        result = ddeint(model, initial_conditions, self.times)
-
-        # Truncate to specified range
-        result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
+        # Define DDE problem and solve
+        prob = jl.DDEProblem(self.model, u0, h, self.tspan, p, constant_lags = lags, saveat = self.times)
+        try:
+            result = jl.solve(prob, self.alg, reltol=self.reltol, abstol=self.abstol)
+        except JuliaError:
+            result = np.full((len(self.init_conds), len(self.times)), 5000) 
+        result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
 
         if fitting:
             # Find nearest indices
@@ -485,27 +484,30 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
     # Function to reject parameter combination if number of peaks are outside a plausible range
     def reject_parameter_combination(self, result): 
         for i in range(result.shape[1]):
-            signals, _ = scipy_signal.find_peaks(result[:, i])
-            number_of_signals = len(signals)
+            if i <= 2: # only check first three states
+                signals, _ = scipy_signal.find_peaks(result[:, i])
+                number_of_signals = len(signals)
 
-            lower_bound, upper_bound = self.signal_range
+                lower_bound, upper_bound = self.signal_range
 
-            if not (lower_bound <= number_of_signals <= upper_bound): 
-                return True
+                if not (lower_bound <= number_of_signals <= upper_bound): 
+                    return True
         
         return False
 
 class HPAModelFEInterCBGAlb(pints.ForwardModel):
     def __init__(self,
-                 parameters,
-                 fixed_pars,
-                 init_conds,
-                 times,
-                 signal_range = (7,13),
-                 num_days=6,
-                 days_to_keep=1,
-                 step=0.1,
-                 reject=True):
+                    parameters,
+                    fixed_pars,
+                    init_conds,
+                    times,
+                    signal_range = (7,13),
+                    num_days=6,
+                    days_to_keep=1,
+                    step=0.1,
+                    reject=True,
+                    reltol=1e-6,
+                    abstol=1e-6):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step
@@ -518,8 +520,14 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
         self.init_conds = init_conds
         self.times = times
+        self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+        self.alg = jl.MethodOfSteps(jl.Vern7())
+        self.model = HPADDEModels.HPAModelFEInterCBGAlb
+        self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
+        self.reltol = reltol
+        self.abstol = abstol
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
             if symmetric:
@@ -586,6 +594,10 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         t_s = par_dict['t_s'] # Circadian phase shift
         sigma = par_dict['sigma'] # Asymmetry of circadian drive
 
+        lags = [tau]
+        p = (gamma_a, gamma_f, gamma_e, K_a, K_f, K_mf, K_me, k_1, k_2, k_3, k_4, k_5, 
+             k_6, k_7, k_8, m_a, m_f, V_f, V_e, tau, alpha, lambda_a, lambda_s, t_s, sigma)
+
         # Initial conditions
         A_0 = self.init_conds['A']
         F_0 = self.init_conds['F']
@@ -596,34 +608,17 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         E_Alb_0 = self.init_conds['E_Alb'] 
         CBG_0 = self.init_conds['CBG'] 
         Alb_0 = self.init_conds['Alb']  
-
-        # Define the DDE model
-        def model(Y, t):
-            A, F, E, F_CBG, F_Alb, E_CBG, E_Alb, CBG, Alb = Y(t)
-            F_delay = Y(t - tau)[1]
-
-            dAdt = -gamma_a*A + ((K_f**m_a)*self.crh(t, t_s, lambda_a, lambda_s, sigma))/(K_f**m_a+F_delay**m_a)
-            dFdt = -(gamma_f+k_1*CBG+k_3*Alb)*F + alpha*((A**m_f)/(K_a**m_f + A**m_f)) + k_2*F_CBG + k_4*F_Alb + \
-                (V_e*E)/(K_me+E) - (V_f+F)/(K_mf+F)
-            dEdt = -(gamma_e+k_5*CBG+k_7*Alb)*E + k_6*E_CBG + k_8*E_Alb - (V_e*E)/(K_me+E) + (V_f+F)/(K_mf+F)
-            dF_CBGdt = k_1*F*CBG - k_2*F_CBG
-            dF_Albdt = k_3*F*Alb - k_4*F_Alb
-            dE_CBGdt = k_5*E*CBG - k_6*E_CBG
-            dE_Albdt = k_7*E*Alb - k_8*E_Alb
-            dCBGdt = k_2*F_CBG - k_1*F*CBG + k_6*E_CBG - k_5*E*CBG
-            dAlbdt = k_4*F_Alb - k_3*F*Alb + k_8*E_Alb - k_7*E*Alb
-
-            return [dAdt, dFdt, dEdt, dF_CBGdt, dF_Albdt, dE_CBGdt, dE_Albdt, dCBGdt, dAlbdt]
-
-        # Define initial conditions
-        def initial_conditions(t):
-            return [A_0, F_0, E_0, F_CBG_0, F_Alb_0, E_CBG_0, E_Alb_0, CBG_0, Alb_0]
+        u0 = [A_0, F_0, E_0, F_CBG_0, F_Alb_0, E_CBG_0, E_Alb_0, CBG_0, Alb_0]
+        jl.seval(f"h(p, t) = [{A_0}, {F_0}, {E_0}, {F_CBG_0}, {F_Alb_0}, {E_CBG_0}, {E_Alb_0}, {CBG_0}, {Alb_0}]")
+        h = jl.h
         
-        # Run the simulation     
-        result = ddeint(model, initial_conditions, self.times)
-
-        # Truncate to specified range
-        result = result[int((self.length_model/self.step)*(self.num_days-self.days_to_keep)):]
+        # Define DDE problem and solve
+        prob = jl.DDEProblem(self.model, u0, h, self.tspan, p, constant_lags = lags, saveat = self.times)
+        try:
+            result = jl.solve(prob, self.alg, reltol=self.reltol, abstol=self.abstol)
+        except JuliaError:
+            result = np.full((len(self.init_conds), len(self.times)), 5000) 
+        result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
 
         if fitting:
             # Find nearest indices
@@ -666,13 +661,14 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
     # Function to reject parameter combination if number of peaks are outside a plausible range
     def reject_parameter_combination(self, result): 
         for i in range(result.shape[1]):
-            signals, _ = scipy_signal.find_peaks(result[:, i])
-            number_of_signals = len(signals)
+            if i <= 2: # only check first three states
+                signals, _ = scipy_signal.find_peaks(result[:, i])
+                number_of_signals = len(signals)
 
-            lower_bound, upper_bound = self.signal_range
+                lower_bound, upper_bound = self.signal_range
 
-            if not (lower_bound <= number_of_signals <= upper_bound): 
-                return True
+                if not (lower_bound <= number_of_signals <= upper_bound): 
+                    return True
         
         return False
     
