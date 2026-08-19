@@ -8,8 +8,20 @@ from juliacall import Main as jl
 from juliacall import JuliaError
 jl.seval('using Pkg; Pkg.activate(".")')
 jl.seval("using HPADDEModels")
-jl.seval("using DelayDiffEq, DifferentialEquations, JSON")
+jl.seval("using DelayDiffEq, DifferentialEquations")
 HPADDEModels = jl.seval("HPADDEModels")
+
+jl.seval("""
+function solve_dde_fast(prob, new_p, lags, alg, reltol, abstol, truncate_idx)
+    # 1. Mutate problem parameters in-place (Zero allocation / Zero JIT re-compile)
+    new_prob = remake(prob, p=new_p, constant_lags=lags)
+    
+    # 2. Solve DDE
+    sol = solve(new_prob, alg, reltol=reltol, abstol=abstol)
+    
+    return sol
+end
+""")
 
 class BaseHPAModel(pints.ForwardModel):
     def __init__(self,
@@ -44,6 +56,13 @@ class BaseHPAModel(pints.ForwardModel):
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.reltol = reltol
         self.abstol = abstol
+        p = (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+        A_0 = self.init_conds['A']
+        C_0 = self.init_conds['C']
+        self.u0 = jl.Vector[jl.Float64]([A_0, C_0])
+        jl.seval(f"h(p, t) = [{A_0}, {C_0}]")
+        self.h = jl.h
+        self.base_prob = jl.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if symmetric:
@@ -99,19 +118,14 @@ class BaseHPAModel(pints.ForwardModel):
         lags = [tau]
         p = (gamma_a, gamma_c, K_a, K_c, m_a, m_c, tau, alpha, lambda_a, lambda_s, t_s, sigma)
 
-        # Initial conditions
-        A_0 = self.init_conds['A']
-        C_0 = self.init_conds['C']
-        u0 = [A_0, C_0]
-        jl.seval(f"h(p, t) = [{A_0}, {C_0}]")
-        h = jl.h
-        
-        # Define DDE problem and solve
-        prob = jl.DDEProblem(self.model, u0, h, self.tspan, p, constant_lags = lags, saveat = self.times)
         try:
-            result = jl.solve(prob, self.alg, reltol=self.reltol, abstol=self.abstol)
+            result_array = jl.solve_dde_fast(
+                self.base_prob, p, lags, self.alg, 
+                self.reltol, self.abstol, self.truncate_idx
+            )
+            result = np.asarray(result_array)
         except JuliaError:
-            result = np.full((len(self.init_conds), len(self.times)), 5000) 
+            result = np.full((len(self.init_conds), len(self.times)), 5000)
         result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
         
         if fitting:
