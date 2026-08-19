@@ -24,9 +24,10 @@ parser.add_argument('-w', '--warmup', type = int, default=5, help='No. of days o
 parser.add_argument('-s', '--step', type=float, default=0.1, help='Step size for dde solver (must be sufficiently small for convergence)')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
 parser.add_argument('-f', '--fixed', type=str, nargs='*', help='Parameters to fix (i.e. not fit)')
+parser.add_argument('-r', '--seed', type=int, default=1, help='Random seed for fitting')
 args = parser.parse_args()
 
-def get_pars(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
+def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
     # Get config file
     init_pars_file = f'configs/{model_dict[m_n]}/test_parameters.json'
 
@@ -91,7 +92,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
         full_model = m_wrap(dde_model, init_pars, times)
     else:
         full_model1 = m_wrap1(dde_model, init_pars, times)
-        full_model2 = m_wrap2(dde_model, init_pars, times) 
+        full_model2 = m_wrap2(dde_model, init_pars, times)
 
     # Load data
     timesISF, timesBP, CORT, Cortisone, ACTH, mCORT, mCortisone = dp.get_data(d_n)
@@ -118,14 +119,15 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
     bounds = dde_model.get_and_create_boundaries()
 
     # Get parameter initialisation
+    np.random.seed(rseed)
     q0 = list(init_pars.values())
 
     # Define Pints optimiser
     opt = pints.OptimisationController(
             f, q0, boundaries=bounds, method=pints.CMAES)
-    opt.set_max_iterations(1500)
-    opt.set_log_interval(iters=20, warm_up=5)
-    opt.set_function_tolerance(iterations=100, threshold=1e-3)
+    opt.set_max_iterations(2500)
+    opt.set_log_interval(iters=50, warm_up=5)
+    opt.set_function_tolerance(iterations=200, threshold=1e-3)
 
     # Simulate initial parameterisation
     res_init = dde_model.simulate(q0, times, fitting=False)
@@ -135,7 +137,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
 
     # Plot initial parameterisation
     plotting.plot_model_output(m_n, res_init, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, outdir=outdir,
-                               filename=f'model_init_output_ind{d_n}', days_to_keep=1, plot_data=True, d_n=d_n)
+                               filename=f'model_init_output_ind{d_n}_seed{rseed}', days_to_keep=1, plot_data=True, d_n=d_n)
 
     # Run optimisation
     print(f"Fitting {model_dict[m_n]}...")
@@ -146,7 +148,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, days_to_keep=1):
 
     # Plot optimised parameterisation
     plotting.plot_model_output(m_n, res_fit, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, outdir=outdir,
-                               filename=f'model_fit_output_ind{d_n}', days_to_keep=1, plot_data=True, d_n=d_n)
+                               filename=f'model_fit_output_ind{d_n}_seed{rseed}', days_to_keep=1, plot_data=True, d_n=d_n)
 
     return p, s, init_pars 
 
@@ -158,10 +160,9 @@ if __name__ == "__main__":
     step = args.step
     outdir = args.outdir
     fixed = args.fixed
+    rseed = args.seed
     if fixed is None:
         fixed = {}
-
-    repeats = 1 #todo
 
     # Make directories if necessary
     if not os.path.exists(f'output/{outdir}'):
@@ -170,13 +171,15 @@ if __name__ == "__main__":
         os.makedirs(f'output/{outdir}/{model_dict[m_n]}/fits')
     if not os.path.exists(f'output/{outdir}/{model_dict[m_n]}/plots'):
         os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots')
+    if not os.path.exists(f'output/{outdir}/cmaes_output'):
+        os.makedirs(f'output/{outdir}/cmaes_output')
 
     # Perform fitting    
-    pars, sc, ips = get_pars(m_n, d_n, warmup, step, outdir, fixed)
+    pars, sc, ips = get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed)
 
     # Save fitted parameters
-    with open(f"output/{outdir}/{model_dict[m_n]}/fits/fit_dataid{d_n}.csv", 'w') as f:
-        f.write('"rep","fitted_pars","values","score"')
+    with open(f"output/{outdir}/{model_dict[m_n]}/fits/fit_dataid{d_n}_seed{rseed}.csv", 'w') as f:
+        f.write('"fitted_pars","values","score"')
         f.write("\n")
         writer = csv.writer(f)
-        writer.writerows(zip(np.arange(1, repeats+1, 1), [ips.keys()], [pars], [sc]))
+        writer.writerow([ips.keys(), pars, sc])
