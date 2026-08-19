@@ -14,12 +14,8 @@ jl.seval("""
 using .DelayDiffEq, .DifferentialEquations
 
 function solve_dde_fast(prob, new_p, lags, alg, reltol, abstol, truncate_idx)
-    # 1. Mutate problem parameters in-place (Zero allocation / Zero JIT re-compile)
     new_prob = remake(prob, p=new_p, constant_lags=lags)
-    
-    # 2. Solve DDE
     sol = solve(new_prob, alg, reltol=reltol, abstol=abstol)
-    
     return sol
 end
 """)
@@ -57,7 +53,7 @@ class BaseHPAModel(pints.ForwardModel):
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.reltol = reltol
         self.abstol = abstol
-        p = (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+        p = jl.seval(f"ntuple(i -> 1, {len(self.all_pars)})")
         A_0 = self.init_conds['A']
         C_0 = self.init_conds['C']
         self.u0 = jl.Vector[jl.Float64]([A_0, C_0])
@@ -208,11 +204,19 @@ class HPAModelFEInter(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = jl.MethodOfSteps(jl.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.HPAModelFEInter
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.reltol = reltol
         self.abstol = abstol
+        p = jl.seval(f"ntuple(i -> 1, {len(self.all_pars)})")
+        A_0 = self.init_conds['A']
+        F_0 = self.init_conds['F']
+        E_0 = self.init_conds['E']
+        self.u0 = jl.Vector[jl.Float64]([A_0, F_0, E_0])
+        jl.seval(f"h(p, t) = [{A_0}, {F_0}, {E_0}]")
+        self.h = jl.h
+        self.base_prob = DDE.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if symmetric:
@@ -273,21 +277,15 @@ class HPAModelFEInter(pints.ForwardModel):
         lags = [tau]
         p = (gamma_a, gamma_f, gamma_e, K_a, K_f, K_mf, K_me, m_a, m_f, 
              V_f, V_e, tau, alpha, lambda_a, lambda_s, t_s, sigma)
-
-        # Initial conditions
-        A_0 = self.init_conds['A']
-        F_0 = self.init_conds['F']
-        E_0 = self.init_conds['E']
-        u0 = [A_0, F_0, E_0]
-        jl.seval(f"h(p, t) = [{A_0}, {F_0}, {E_0}]")
-        h = jl.h
         
-        # Define DDE problem and solve
-        prob = jl.DDEProblem(self.model, u0, h, self.tspan, p, constant_lags = lags, saveat = self.times)
         try:
-            result = jl.solve(prob, self.alg, reltol=self.reltol, abstol=self.abstol)
+            result_array = jl.solve_dde_fast(
+                self.base_prob, p, lags, self.alg,
+                self.reltol, self.abstol, self.truncate_idx
+            )
+            result = np.asarray(result_array)
         except JuliaError:
-            result = np.full((len(self.init_conds), len(self.times)), 5000) 
+            result = np.full((len(self.init_conds), len(self.times)), 5000)
         result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
 
         if fitting:
@@ -369,11 +367,21 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = jl.MethodOfSteps(jl.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.HPAModelFEInterCBGAlbSimple
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.reltol = reltol
         self.abstol = abstol
+        p = jl.seval(f"ntuple(i -> 1, {len(self.all_pars)})")
+        A_0 = self.init_conds['A']
+        F_0 = self.init_conds['F']
+        E_0 = self.init_conds['E']
+        F_bound_0 = self.init_conds['F_bound']
+        E_bound_0 = self.init_conds['E_bound']
+        self.u0 = [A_0, F_0, E_0, F_bound_0, E_bound_0]
+        jl.seval(f"h(p, t) = [{A_0}, {F_0}, {E_0}, {F_bound_0}, {E_bound_0}]")
+        self.h = jl.h
+        self.base_prob = DDE.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if symmetric:
@@ -439,21 +447,14 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         lags = [tau]
         p = (gamma_a, gamma_f, gamma_e, K_a, K_f, K_mf, K_me, k_Fon, k_Foff, k_Eon, 
              k_Eoff, m_a, m_f, V_f, V_e, tau, alpha, lambda_a, lambda_s, t_s, sigma)
-
-        # Initial conditions
-        A_0 = self.init_conds['A']
-        F_0 = self.init_conds['F']
-        E_0 = self.init_conds['E']
-        F_bound_0 = self.init_conds['F_bound']
-        E_bound_0 = self.init_conds['E_bound']
-        u0 = [A_0, F_0, E_0, F_bound_0, E_bound_0]
-        jl.seval(f"h(p, t) = [{A_0}, {F_0}, {E_0}, {F_bound_0}, {E_bound_0}]")
-        h = jl.h
         
         # Define DDE problem and solve
-        prob = jl.DDEProblem(self.model, u0, h, self.tspan, p, constant_lags = lags, saveat = self.times)
         try:
-            result = jl.solve(prob, self.alg, reltol=self.reltol, abstol=self.abstol)
+            result_array = jl.solve_dde_fast(
+                self.base_prob, p, lags, self.alg,
+                self.reltol, self.abstol, self.truncate_idx
+            )
+            result = np.asarray(result_array)
         except JuliaError:
             result = np.full((len(self.init_conds), len(self.times)), 5000) 
         result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
@@ -538,11 +539,25 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = jl.MethodOfSteps(jl.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.HPAModelFEInterCBGAlb
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.reltol = reltol
         self.abstol = abstol
+        p = jl.seval(f"ntuple(i -> 1, {len(self.all_pars)})")
+        A_0 = self.init_conds['A']
+        F_0 = self.init_conds['F']
+        E_0 = self.init_conds['E']
+        F_CBG_0 = self.init_conds['F_CBG']
+        F_Alb_0 = self.init_conds['F_Alb'] 
+        E_CBG_0 = self.init_conds['E_CBG'] 
+        E_Alb_0 = self.init_conds['E_Alb'] 
+        CBG_0 = self.init_conds['CBG'] 
+        Alb_0 = self.init_conds['Alb']  
+        self.u0 = [A_0, F_0, E_0, F_CBG_0, F_Alb_0, E_CBG_0, E_Alb_0, CBG_0, Alb_0]
+        jl.seval(f"h(p, t) = [{A_0}, {F_0}, {E_0}, {F_CBG_0}, {F_Alb_0}, {E_CBG_0}, {E_Alb_0}, {CBG_0}, {Alb_0}]")
+        self.h = jl.h
+        self.base_prob = DDE.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if symmetric:
@@ -612,25 +627,14 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         lags = [tau]
         p = (gamma_a, gamma_f, gamma_e, K_a, K_f, K_mf, K_me, k_1, k_2, k_3, k_4, k_5, 
              k_6, k_7, k_8, m_a, m_f, V_f, V_e, tau, alpha, lambda_a, lambda_s, t_s, sigma)
-
-        # Initial conditions
-        A_0 = self.init_conds['A']
-        F_0 = self.init_conds['F']
-        E_0 = self.init_conds['E']
-        F_CBG_0 = self.init_conds['F_CBG']
-        F_Alb_0 = self.init_conds['F_Alb'] 
-        E_CBG_0 = self.init_conds['E_CBG'] 
-        E_Alb_0 = self.init_conds['E_Alb'] 
-        CBG_0 = self.init_conds['CBG'] 
-        Alb_0 = self.init_conds['Alb']  
-        u0 = [A_0, F_0, E_0, F_CBG_0, F_Alb_0, E_CBG_0, E_Alb_0, CBG_0, Alb_0]
-        jl.seval(f"h(p, t) = [{A_0}, {F_0}, {E_0}, {F_CBG_0}, {F_Alb_0}, {E_CBG_0}, {E_Alb_0}, {CBG_0}, {Alb_0}]")
-        h = jl.h
         
         # Define DDE problem and solve
-        prob = jl.DDEProblem(self.model, u0, h, self.tspan, p, constant_lags = lags, saveat = self.times)
         try:
-            result = jl.solve(prob, self.alg, reltol=self.reltol, abstol=self.abstol)
+            result_array = jl.solve_dde_fast(
+                self.base_prob, p, lags, self.alg,
+                self.reltol, self.abstol, self.truncate_idx
+            )
+            result = np.asarray(result_array)
         except JuliaError:
             result = np.full((len(self.init_conds), len(self.times)), 5000) 
         result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
@@ -715,11 +719,23 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = jl.MethodOfSteps(jl.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.HPAModelFEInterCBGAlbBloodISF
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.reltol = reltol
         self.abstol = abstol
+        p = jl.seval(f"ntuple(i -> 1, {len(self.all_pars)})")
+        A_0 = self.init_conds['A']
+        F_B_0 = self.init_conds['F_B']
+        E_B_0 = self.init_conds['E_B']
+        F_bound_0 = self.init_conds['F_bound']
+        E_bound_0 = self.init_conds['E_bound']
+        F_I_0 = self.init_conds['F_I']
+        E_I_0 = self.init_conds['E_I']
+        self.u0 = [A_0, F_B_0, E_B_0, F_bound_0, E_bound_0, F_I_0, E_I_0]
+        jl.seval(f"h(p, t) = [{A_0}, {F_B_0}, {E_B_0}, {F_bound_0}, {E_bound_0}, {F_I_0}, {E_I_0}]")
+        self.h = jl.h
+        self.base_prob = DDE.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if symmetric:
@@ -791,22 +807,13 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         p = (gamma_a, gamma_f_b, gamma_f_i, gamma_e_b, gamma_e_i, K_a, K_f, K_mf, K_me, 
              k_Fon, k_Foff, k_Eon, k_Eoff, k_BI, m_a, m_f, V_f, V_e, V_B, V_I, tau, alpha, lambda_a, lambda_s, t_s, sigma)
         
-        # Initial conditions
-        A_0 = self.init_conds['A']
-        F_B_0 = self.init_conds['F_B']
-        E_B_0 = self.init_conds['E_B']
-        F_bound_0 = self.init_conds['F_bound']
-        E_bound_0 = self.init_conds['E_bound']
-        F_I_0 = self.init_conds['F_I']
-        E_I_0 = self.init_conds['E_I']
-        u0 = [A_0, F_B_0, E_B_0, F_bound_0, E_bound_0, F_I_0, E_I_0]
-        jl.seval(f"h(p, t) = [{A_0}, {F_B_0}, {E_B_0}, {F_bound_0}, {E_bound_0}, {F_I_0}, {E_I_0}]")
-        h = jl.h
-        
         # Define DDE problem and solve
-        prob = jl.DDEProblem(self.model, u0, h, self.tspan, p, constant_lags = lags, saveat = self.times)
         try:
-            result = jl.solve(prob, self.alg, reltol=self.reltol, abstol=self.abstol)
+            result_array = jl.solve_dde_fast(
+                self.base_prob, p, lags, self.alg,
+                self.reltol, self.abstol, self.truncate_idx
+            )
+            result = np.asarray(result_array)
         except JuliaError:
             result = np.full((len(self.init_conds), len(self.times)), 5000) 
         result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
@@ -891,11 +898,23 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = jl.MethodOfSteps(jl.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.HPAModelFEInterBothCBGAlbBloodISF
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.reltol = reltol
         self.abstol = abstol
+        p = jl.seval(f"ntuple(i -> 1, {len(self.all_pars)})")
+        A_0 = self.init_conds['A']
+        F_B_0 = self.init_conds['F_B']
+        E_B_0 = self.init_conds['E_B']
+        F_bound_0 = self.init_conds['F_bound']
+        E_bound_0 = self.init_conds['E_bound']
+        F_I_0 = self.init_conds['F_I']
+        E_I_0 = self.init_conds['E_I']
+        self.u0 = [A_0, F_B_0, E_B_0, F_bound_0, E_bound_0, F_I_0, E_I_0]
+        jl.seval(f"h(p, t) = [{A_0}, {F_B_0}, {E_B_0}, {F_bound_0}, {E_bound_0}, {F_I_0}, {E_I_0}]")
+        self.h = jl.h
+        self.base_prob = DDE.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if symmetric:
@@ -971,23 +990,14 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         p = (gamma_a, gamma_f_b, gamma_f_i, gamma_e_b, gamma_e_i, K_a, K_f, K_mfB, 
              K_meB, K_mfI, K_meI, k_Fon, k_Foff, k_Eon, k_Eoff, k_BI, m_a, m_f, V_f_b,
              V_e_b, V_f_i, V_e_i, V_B, V_I, tau, alpha, lambda_a, lambda_s, t_s, sigma)
-
-        # Initial conditions
-        A_0 = self.init_conds['A']
-        F_B_0 = self.init_conds['F_B']
-        E_B_0 = self.init_conds['E_B']
-        F_bound_0 = self.init_conds['F_bound']
-        E_bound_0 = self.init_conds['E_bound']
-        F_I_0 = self.init_conds['F_I']
-        E_I_0 = self.init_conds['E_I']
-        u0 = [A_0, F_B_0, E_B_0, F_bound_0, E_bound_0, F_I_0, E_I_0]
-        jl.seval(f"h(p, t) = [{A_0}, {F_B_0}, {E_B_0}, {F_bound_0}, {E_bound_0}, {F_I_0}, {E_I_0}]")
-        h = jl.h
         
         # Define DDE problem and solve
-        prob = jl.DDEProblem(self.model, u0, h, self.tspan, p, constant_lags = lags, saveat = self.times)
         try:
-            result = jl.solve(prob, self.alg, reltol=self.reltol, abstol=self.abstol)
+            result_array = jl.solve_dde_fast(
+                self.base_prob, p, lags, self.alg,
+                self.reltol, self.abstol, self.truncate_idx
+            )
+            result = np.asarray(result_array)
         except JuliaError:
             result = np.full((len(self.init_conds), len(self.times)), 5000) 
         result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
