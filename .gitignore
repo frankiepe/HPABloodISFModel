@@ -3,3 +3,4 @@ figures/
 output/
 *.DS_Store
 *__pycache__/
+julia_hpa_sysimage.so

@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 import methods.data_processing as dp
 from scipy import stats
