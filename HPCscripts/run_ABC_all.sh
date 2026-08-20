@@ -5,7 +5,7 @@
 #SBATCH --partition=multicore
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=3G
+#SBATCH --mem=8G
 #SBATCH --array=1-7
 
 module purge

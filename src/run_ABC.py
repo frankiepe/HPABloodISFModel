@@ -118,7 +118,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, reps, days_to_keep=1):
     pars_all = []
     objs = []
     for i in np.arange(0,reps):
-        if i % 50 == 0:
+        if i % 100 == 0:
             print(f"Iteration {i}/{reps}")
         par_i = bounds.sample(1)[0] # sample
         with warnings.catch_warnings(record=True) as caught_warnings:
