@@ -20,7 +20,10 @@ model=$3
 
 if [ ! -d output/${outdir} ]; then
     mkdir output/${outdir}
+fi
+
+if [ ! -d output/${outdir}/cmaes_output ]; then
     mkdir output/${outdir}/cmaes_output
 fi
 
-python -u src/fit_model.py --model ${model} --ind ${data_id} --outdir ${outdir} --seed ${SLURM_ARRAY_TASK_ID} > output/${outdir}/cmaes_output/output_rep${SLURM_ARRAY_TASK_ID}_model${model}_dataid${data_id}.txt
+python -u src/fit_model.py --model ${model} --ind ${data_id} --outdir ${outdir} --seed ${SLURM_ARRAY_TASK_ID} > output/${outdir}/cmaes_output/output_model${model}_dataid${data_id}_rep${SLURM_ARRAY_TASK_ID}.txt
