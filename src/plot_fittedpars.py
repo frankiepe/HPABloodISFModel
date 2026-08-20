@@ -34,7 +34,20 @@ def plot_pars(m_n, num_inds, reps, outdir):
     fitted_pars = re.findall(r"'([^']*)'", fit['fitted_pars'][0])
     df = pd.DataFrame(best_pars, columns=fitted_pars)
 
-    fig, axes = plt.subplots(3, 4, figsize=(14, 10))
+    if m_n == '1':
+        fig, axes = plt.subplots(3, 4, figsize=(14, 10))
+    if m_n == '2':
+        fig, axes = plt.subplots(3, 6, figsize=(14, 10))
+    if m_n == '3a':
+        fig, axes = plt.subplots(3, 7, figsize=(14, 10))
+    if m_n == '3b':
+        fig, axes = plt.subplots(5, 5, figsize=(14, 10))
+    if m_n == '4':
+        fig, axes = plt.subplots(4, 7, figsize=(14, 10))
+    if m_n == '5':
+        fig, axes = plt.subplots(5, 6, figsize=(14, 10))
+    if m_n == '6':
+        fig, axes = plt.subplots(4, 4, figsize=(14, 10))
     axes = axes.flatten()
 
     for i, param in enumerate(fitted_pars):
