@@ -118,7 +118,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, reps, days_to_keep=1):
     pars_all = []
     objs = []
     for i in np.arange(0,reps):
-        if i % 20 == 0:
+        if i % 100 == 0:
             print(f"Iteration {i}/{reps}")
         par_i = bounds.sample(1)[0] # sample
         with warnings.catch_warnings(record=True) as caught_warnings:
@@ -158,11 +158,11 @@ if __name__ == "__main__":
 
     # Make directories if necessary
     if not os.path.exists(f'output/{outdir}'):
-        os.makedirs(f'output/{outdir}')
+        os.makedirs(f'output/{outdir}', exist_ok=True)
     if not os.path.exists(f'output/{outdir}/{model_dict[m_n]}/pars'):
-        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/pars')
+        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/pars', exist_ok=True)
     if not os.path.exists(f'output/{outdir}/{model_dict[m_n]}/plots'):
-        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots')
+        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots', exist_ok=True)
 
     # Run ABC experiment
     print("Running ABC experiment...")

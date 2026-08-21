@@ -122,11 +122,11 @@ if __name__ == "__main__":
 
     # Make directories if necessary
     if not os.path.exists(f'output/{outdir}'):
-        os.makedirs(f'output/{outdir}')
+        os.makedirs(f'output/{outdir}', exist_ok=True)
     if not os.path.exists(f'output/{outdir}/{model_dict[m_n]}/pars'):
-        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/pars')
+        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/pars', exist_ok=True)
     if not os.path.exists(f'output/{outdir}/{model_dict[m_n]}/plots'):
-        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots')
+        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots', exist_ok=True)
 
     # Process ABC output
     process_ABC(m_n, d_n, warmup, step, outdir, fixed, thresh)

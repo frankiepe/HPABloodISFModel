@@ -10,6 +10,18 @@ jl.seval('using Pkg; Pkg.activate(".")')
 jl.seval("using HPADDEModels")
 jl.seval("using DelayDiffEq, DifferentialEquations")
 HPADDEModels = jl.seval("HPADDEModels")
+DDE = jl.seval("DelayDiffEq")
+DiffEq = jl.seval("DifferentialEquations")
+
+jl.seval("""
+using .DelayDiffEq, .DifferentialEquations
+
+function solve_dde_fast(prob, new_p, lags, alg, reltol, abstol, truncate_idx)
+    new_prob = remake(prob, p=new_p, constant_lags=lags)
+    sol = solve(new_prob, alg, reltol=reltol, abstol=abstol)
+    return sol
+end
+""")
 
 jl.seval("""
 function solve_dde_fast(prob, new_p, lags, alg, reltol, abstol, truncate_idx)
@@ -47,7 +59,7 @@ class BaseHPAModel(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = jl.MethodOfSteps(jl.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.BaseHPAModel
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.reltol = reltol
@@ -58,7 +70,7 @@ class BaseHPAModel(pints.ForwardModel):
         self.u0 = jl.Vector[jl.Float64]([A_0, C_0])
         jl.seval(f"h(p, t) = [{A_0}, {C_0}]")
         self.h = jl.h
-        self.base_prob = jl.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
+        self.base_prob = DDE.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if symmetric:
@@ -123,7 +135,7 @@ class BaseHPAModel(pints.ForwardModel):
         except JuliaError:
             result = np.full((len(self.init_conds), len(self.times)), 5000)
         result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
-        
+
         if fitting:
             # Find nearest indices
             indices = np.searchsorted(self.times, times)
@@ -203,7 +215,7 @@ class HPAModelFEInter(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = jl.MethodOfSteps(jl.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.HPAModelFEInter
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.reltol = reltol
@@ -215,7 +227,7 @@ class HPAModelFEInter(pints.ForwardModel):
         self.u0 = jl.Vector[jl.Float64]([A_0, F_0, E_0])
         jl.seval(f"h(p, t) = [{A_0}, {F_0}, {E_0}]")
         self.h = jl.h
-        self.base_prob = jl.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
+        self.base_prob = DDE.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if symmetric:
@@ -285,7 +297,7 @@ class HPAModelFEInter(pints.ForwardModel):
             )
             result = np.asarray(result_array)
         except JuliaError:
-            result = np.full((len(self.init_conds), len(self.times)), 5000) 
+            result = np.full((len(self.init_conds), len(self.times)), 5000)
         result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
 
         if fitting:
@@ -367,7 +379,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = jl.MethodOfSteps(jl.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.HPAModelFEInterCBGAlbSimple
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.reltol = reltol
@@ -381,7 +393,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         self.u0 = [A_0, F_0, E_0, F_bound_0, E_bound_0]
         jl.seval(f"h(p, t) = [{A_0}, {F_0}, {E_0}, {F_bound_0}, {E_bound_0}]")
         self.h = jl.h
-        self.base_prob = jl.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
+        self.base_prob = DDE.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if symmetric:
@@ -539,7 +551,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = jl.MethodOfSteps(jl.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.HPAModelFEInterCBGAlb
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.reltol = reltol
@@ -557,7 +569,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         self.u0 = [A_0, F_0, E_0, F_CBG_0, F_Alb_0, E_CBG_0, E_Alb_0, CBG_0, Alb_0]
         jl.seval(f"h(p, t) = [{A_0}, {F_0}, {E_0}, {F_CBG_0}, {F_Alb_0}, {E_CBG_0}, {E_Alb_0}, {CBG_0}, {Alb_0}]")
         self.h = jl.h
-        self.base_prob = jl.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
+        self.base_prob = DDE.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if symmetric:
@@ -719,7 +731,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = jl.MethodOfSteps(jl.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.HPAModelFEInterCBGAlbBloodISF
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.reltol = reltol
@@ -735,7 +747,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         self.u0 = [A_0, F_B_0, E_B_0, F_bound_0, E_bound_0, F_I_0, E_I_0]
         jl.seval(f"h(p, t) = [{A_0}, {F_B_0}, {E_B_0}, {F_bound_0}, {E_bound_0}, {F_I_0}, {E_I_0}]")
         self.h = jl.h
-        self.base_prob = jl.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
+        self.base_prob = DDE.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if symmetric:
@@ -898,7 +910,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = jl.MethodOfSteps(jl.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.HPAModelFEInterBothCBGAlbBloodISF
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.reltol = reltol
@@ -914,7 +926,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         self.u0 = [A_0, F_B_0, E_B_0, F_bound_0, E_bound_0, F_I_0, E_I_0]
         jl.seval(f"h(p, t) = [{A_0}, {F_B_0}, {E_B_0}, {F_bound_0}, {E_bound_0}, {F_I_0}, {E_I_0}]")
         self.h = jl.h
-        self.base_prob = jl.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
+        self.base_prob = DDE.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
 
     def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
         if symmetric:
