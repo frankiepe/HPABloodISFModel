@@ -101,7 +101,7 @@ def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filenam
     plt.savefig(f'{savedir}/{filename}.png')
     plt.close(fig)
 
-def plot_parameter_histograms(param_values, param_name, hist_file, bins=20):
+def plot_parameter_histograms(param_values, param_name, hist_file, thresh, bins=20):
     lb = pb[param_name][0]
     ub = pb[param_name][1]
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -109,7 +109,7 @@ def plot_parameter_histograms(param_values, param_name, hist_file, bins=20):
     kde = stats.gaussian_kde(param_values)
     xr = np.linspace(lb, ub, 1000)
     ax.plot(xr, kde(xr), color = 'black', alpha = 0.5)
-    ax.set_title(f"Histogram of accepted values for parameter '{param_name}'")
+    ax.set_title(f"Histogram of accepted values for parameter '{param_name}' (threshold={thresh})")
     ax.set_xlabel(param_name)
     ax.set_ylabel('Density')
     ax.set_xlim(lb, ub)
