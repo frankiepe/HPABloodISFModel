@@ -6,9 +6,6 @@ from . import day_len, PARAMETER_BOUNDARIES
 from scipy import signal as scipy_signal
 from juliacall import Main as jl
 from juliacall import JuliaError
-jl.seval('using Pkg; Pkg.activate(".")')
-jl.seval("using HPADDEModels")
-jl.seval("using DelayDiffEq, DifferentialEquations")
 HPADDEModels = jl.seval("HPADDEModels")
 DDE = jl.seval("DelayDiffEq")
 DiffEq = jl.seval("DifferentialEquations")
