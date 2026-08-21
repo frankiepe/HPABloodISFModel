@@ -6,6 +6,9 @@ from . import day_len, PARAMETER_BOUNDARIES
 from scipy import signal as scipy_signal
 from juliacall import Main as jl
 from juliacall import JuliaError
+jl.seval('using Pkg; Pkg.activate(".")')
+jl.seval("using HPADDEModels")
+jl.seval("using DelayDiffEq, DifferentialEquations")
 HPADDEModels = jl.seval("HPADDEModels")
 DDE = jl.seval("DelayDiffEq")
 DiffEq = jl.seval("DifferentialEquations")
@@ -13,6 +16,14 @@ DiffEq = jl.seval("DifferentialEquations")
 jl.seval("""
 using .DelayDiffEq, .DifferentialEquations
 
+function solve_dde_fast(prob, new_p, lags, alg, reltol, abstol, truncate_idx)
+    new_prob = remake(prob, p=new_p, constant_lags=lags)
+    sol = solve(new_prob, alg, reltol=reltol, abstol=abstol)
+    return sol
+end
+""")
+
+jl.seval("""
 function solve_dde_fast(prob, new_p, lags, alg, reltol, abstol, truncate_idx)
     new_prob = remake(prob, p=new_p, constant_lags=lags)
     sol = solve(new_prob, alg, reltol=reltol, abstol=abstol)
@@ -117,7 +128,7 @@ class BaseHPAModel(pints.ForwardModel):
 
         try:
             result_array = jl.solve_dde_fast(
-                self.base_prob, p, lags, self.alg,
+                self.base_prob, p, lags, self.alg, 
                 self.reltol, self.abstol, self.truncate_idx
             )
             result = np.asarray(result_array)
@@ -278,6 +289,7 @@ class HPAModelFEInter(pints.ForwardModel):
         p = (gamma_a, gamma_f, gamma_e, K_a, K_f, K_mf, K_me, m_a, m_f, 
              V_f, V_e, tau, alpha, lambda_a, lambda_s, t_s, sigma)
         
+        # Define DDE problem and solve
         try:
             result_array = jl.solve_dde_fast(
                 self.base_prob, p, lags, self.alg,
