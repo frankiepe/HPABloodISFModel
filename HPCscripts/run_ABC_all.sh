@@ -1,11 +1,11 @@
 #!/bin/bash --login
 
 #SBATCH --job-name=ABC
-#SBATCH --time=06:00:00
+#SBATCH --time=08:00:00
 #SBATCH --partition=multicore
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
-#SBATCH --mem=8G
+#SBATCH --mem=10G
 #SBATCH --array=1-7
 
 module purge
@@ -21,6 +21,8 @@ thresh=$4
 
 if [ ! -d output/${outdir} ]; then
     mkdir output/${outdir}
+fi
+if [ ! -d output/${outdir}/ABC_output ]; then
     mkdir output/${outdir}/ABC_output
 fi
 
