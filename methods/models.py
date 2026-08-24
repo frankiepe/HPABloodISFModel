@@ -14,7 +14,9 @@ jl.seval("""
 using .DelayDiffEq, .DifferentialEquations
 
 function solve_dde_fast(prob, new_p, lags, alg, reltol, abstol, truncate_idx)
-    new_prob = remake(prob, p=new_p, constant_lags=lags)
+    p_jl = Vector{Float64}(collect(new_p))
+    lags_jl = Vector{Float64}(collect(lags))
+    new_prob = remake(prob, p=p_jl, constant_lags=lags_jl)
     sol = solve(new_prob, alg, reltol=reltol, abstol=abstol)
     return sol
 end
@@ -379,7 +381,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         E_0 = self.init_conds['E']
         F_bound_0 = self.init_conds['F_bound']
         E_bound_0 = self.init_conds['E_bound']
-        self.u0 = [A_0, F_0, E_0, F_bound_0, E_bound_0]
+        self.u0 = jl.collect(np.array([A_0, F_0, E_0, F_bound_0, E_bound_0], dtype=np.float64))
         jl.seval(f"h(p, t) = [{A_0}, {F_0}, {E_0}, {F_bound_0}, {E_bound_0}]")
         self.h = jl.h
         self.base_prob = DDE.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
