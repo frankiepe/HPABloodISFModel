@@ -166,13 +166,13 @@ if __name__ == "__main__":
 
     # Make directories if necessary
     if not os.path.exists(f'output/{outdir}'):
-        os.makedirs(f'output/{outdir}')
+        os.makedirs(f'output/{outdir}', exist_ok=True)
     if not os.path.exists(f'output/{outdir}/{model_dict[m_n]}/fits'):
-        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/fits')
+        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/fits', exist_ok=True)
     if not os.path.exists(f'output/{outdir}/{model_dict[m_n]}/plots'):
-        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots')
+        os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots', exist_ok=True)
     if not os.path.exists(f'output/{outdir}/cmaes_output'):
-        os.makedirs(f'output/{outdir}/cmaes_output')
+        os.makedirs(f'output/{outdir}/cmaes_output', exist_ok=True)
 
     # Perform fitting    
     pars, sc, ips = get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed)

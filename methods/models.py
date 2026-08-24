@@ -20,14 +20,6 @@ function solve_dde_fast(prob, new_p, lags, alg, reltol, abstol, truncate_idx)
 end
 """)
 
-jl.seval("""
-function solve_dde_fast(prob, new_p, lags, alg, reltol, abstol, truncate_idx)
-    new_prob = remake(prob, p=new_p, constant_lags=lags)
-    sol = solve(new_prob, alg, reltol=reltol, abstol=abstol)
-    return sol
-end
-""")
-
 class BaseHPAModel(pints.ForwardModel):
     def __init__(self,
                  parameters,
