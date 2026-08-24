@@ -556,8 +556,8 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         E_CBG_0 = self.init_conds['E_CBG'] 
         E_Alb_0 = self.init_conds['E_Alb'] 
         CBG_0 = self.init_conds['CBG'] 
-        Alb_0 = self.init_conds['Alb']  
-        self.u0 = [A_0, F_0, E_0, F_CBG_0, F_Alb_0, E_CBG_0, E_Alb_0, CBG_0, Alb_0]
+        Alb_0 = self.init_conds['Alb']
+        self.u0 = jl.collect(np.array([A_0, F_0, E_0, F_CBG_0, F_Alb_0, E_CBG_0, E_Alb_0, CBG_0, Alb_0], dtype=np.float64))  
         jl.seval(f"h(p, t) = [{A_0}, {F_0}, {E_0}, {F_CBG_0}, {F_Alb_0}, {E_CBG_0}, {E_Alb_0}, {CBG_0}, {Alb_0}]")
         self.h = jl.h
         self.base_prob = DDE.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
@@ -735,7 +735,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         E_bound_0 = self.init_conds['E_bound']
         F_I_0 = self.init_conds['F_I']
         E_I_0 = self.init_conds['E_I']
-        self.u0 = [A_0, F_B_0, E_B_0, F_bound_0, E_bound_0, F_I_0, E_I_0]
+        self.u0 = jl.collect(np.array([A_0, F_B_0, E_B_0, F_bound_0, E_bound_0, F_I_0, E_I_0], dtype=np.float64))  
         jl.seval(f"h(p, t) = [{A_0}, {F_B_0}, {E_B_0}, {F_bound_0}, {E_bound_0}, {F_I_0}, {E_I_0}]")
         self.h = jl.h
         self.base_prob = DDE.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
@@ -914,7 +914,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         E_bound_0 = self.init_conds['E_bound']
         F_I_0 = self.init_conds['F_I']
         E_I_0 = self.init_conds['E_I']
-        self.u0 = [A_0, F_B_0, E_B_0, F_bound_0, E_bound_0, F_I_0, E_I_0]
+        self.u0 = jl.collect(np.array([A_0, F_B_0, E_B_0, F_bound_0, E_bound_0, F_I_0, E_I_0], dtype=np.float64))
         jl.seval(f"h(p, t) = [{A_0}, {F_B_0}, {E_B_0}, {F_bound_0}, {E_bound_0}, {F_I_0}, {E_I_0}]")
         self.h = jl.h
         self.base_prob = DDE.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
