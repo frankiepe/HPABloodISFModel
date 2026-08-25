@@ -22,7 +22,7 @@ parser.add_argument('-w', '--warmup', type = int, default=5, help='No. of days o
 parser.add_argument('-s', '--step', type=float, default=0.1, help='Step size for dde solver (must be sufficiently small for convergence)')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
 parser.add_argument('-f', '--fixed', type=str, nargs='*', help='Parameters to fix (i.e. not fit)')
-parser.add_argument('-t', '--thresh', type = int, default=2000, help='Objective threshold for ABC filter')
+parser.add_argument('-t', '--thresh', type = float, default=2000, help='Objective threshold for ABC filter')
 args = parser.parse_args()
 
 def process_ABC(m_n, d_n, warmup, step, outdir, fixed, thresh, days_to_keep=1):

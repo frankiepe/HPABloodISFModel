@@ -146,6 +146,8 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
     # Simulate optimised parameterisation
     res_fit = dde_model.simulate(p, times, fitting=False)
 
+    crh_drive = [dde_model.crh(t) for t in times[int((day_len*warmup)/step):]]
+
     # Plot optimised parameterisation
     plotting.plot_model_output(m_n, res_fit, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, outdir=outdir,
                                filename=f'model_fit_output_ind{d_n}_seed{rseed}', days_to_keep=1, plot_data=True, d_n=d_n)
