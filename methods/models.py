@@ -13,7 +13,7 @@ DiffEq = jl.seval("DifferentialEquations")
 jl.seval("""
 using .DelayDiffEq, .DifferentialEquations
 
-function solve_dde_fast(prob, new_p, lags, alg, reltol, abstol, truncate_idx)
+function solve_dde_fast(prob, new_p, lags, alg, reltol, abstol)
     p_jl = Vector{Float64}(collect(new_p))
     lags_jl = Vector{Float64}(collect(lags))
     new_prob = remake(prob, p=p_jl, constant_lags=lags_jl)
@@ -53,6 +53,7 @@ class BaseHPAModel(pints.ForwardModel):
         self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.BaseHPAModel
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
+        self.times_fitting = self.times[self.truncate_idx:] - self.times[self.truncate_idx]
         self.reltol = reltol
         self.abstol = abstol
         p = jl.seval(f"ntuple(i -> 1, {len(self.all_pars)})")
@@ -120,7 +121,7 @@ class BaseHPAModel(pints.ForwardModel):
         try:
             result_array = jl.solve_dde_fast(
                 self.base_prob, p, lags, self.alg, 
-                self.reltol, self.abstol, self.truncate_idx
+                self.reltol, self.abstol
             )
             result = np.asarray(result_array)
         except JuliaError:
@@ -129,14 +130,18 @@ class BaseHPAModel(pints.ForwardModel):
 
         if fitting:
             # Find nearest indices
-            indices = np.searchsorted(self.times, times)
+            indices = np.searchsorted(self.times_fitting, times)
 
             # Pull the filtered values
             filtered_output = result[indices]
             result = filtered_output
 
         if (self.reject == True):
-            if (self.reject_parameter_combination(result)):
+            if fitting:
+                prop_day = (times[-1]-times[0])/day_len
+            else:
+                prop_day = 1
+            if (self.reject_parameter_combination(result, prop_day)):
                 return np.full((len(result), np.shape(result)[1]), 5000)
         
         return result
@@ -166,14 +171,14 @@ class BaseHPAModel(pints.ForwardModel):
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
-    def reject_parameter_combination(self, result): 
+    def reject_parameter_combination(self, result, prop_day):
         for i in range(result.shape[1]):
             signals, _ = scipy_signal.find_peaks(result[:, i])
             number_of_signals = len(signals)
 
             lower_bound, upper_bound = self.signal_range
 
-            if not (lower_bound <= number_of_signals <= upper_bound): 
+            if not (int(prop_day*lower_bound) <= number_of_signals <= int(prop_day*upper_bound)): 
                 return True
         
         return False
@@ -209,6 +214,7 @@ class HPAModelFEInter(pints.ForwardModel):
         self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.HPAModelFEInter
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
+        self.times_fitting = self.times[self.truncate_idx:] - self.times[self.truncate_idx]
         self.reltol = reltol
         self.abstol = abstol
         p = jl.seval(f"ntuple(i -> 1, {len(self.all_pars)})")
@@ -284,7 +290,7 @@ class HPAModelFEInter(pints.ForwardModel):
         try:
             result_array = jl.solve_dde_fast(
                 self.base_prob, p, lags, self.alg,
-                self.reltol, self.abstol, self.truncate_idx
+                self.reltol, self.abstol
             )
             result = np.asarray(result_array)
         except JuliaError:
@@ -293,14 +299,18 @@ class HPAModelFEInter(pints.ForwardModel):
 
         if fitting:
             # Find nearest indices
-            indices = np.searchsorted(self.times, times)
+            indices = np.searchsorted(self.times_fitting, times)
 
             # Pull the filtered values
             filtered_output = result[indices]
             result = filtered_output
 
         if (self.reject == True):
-            if (self.reject_parameter_combination(result)):
+            if fitting:
+                prop_day = (times[-1]-times[0])/day_len
+            else:
+                prop_day = 1
+            if (self.reject_parameter_combination(result, prop_day)):
                 return np.full((len(result), np.shape(result)[1]), 5000)
 
         return result
@@ -330,14 +340,14 @@ class HPAModelFEInter(pints.ForwardModel):
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
-    def reject_parameter_combination(self, result): 
+    def reject_parameter_combination(self, result, prop_day):
         for i in range(result.shape[1]):
             signals, _ = scipy_signal.find_peaks(result[:, i])
             number_of_signals = len(signals)
 
             lower_bound, upper_bound = self.signal_range
 
-            if not (lower_bound <= number_of_signals <= upper_bound): 
+            if not (int(prop_day*lower_bound) <= number_of_signals <= int(prop_day*upper_bound)): 
                 return True
         
         return False
@@ -373,6 +383,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.HPAModelFEInterCBGAlbSimple
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
+        self.times_fitting = self.times[self.truncate_idx:] - self.times[self.truncate_idx]
         self.reltol = reltol
         self.abstol = abstol
         p = jl.seval(f"ntuple(i -> 1, {len(self.all_pars)})")
@@ -455,7 +466,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         try:
             result_array = jl.solve_dde_fast(
                 self.base_prob, p, lags, self.alg,
-                self.reltol, self.abstol, self.truncate_idx
+                self.reltol, self.abstol
             )
             result = np.asarray(result_array)
         except JuliaError:
@@ -464,14 +475,18 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
 
         if fitting:
             # Find nearest indices
-            indices = np.searchsorted(self.times, times)
+            indices = np.searchsorted(self.times_fitting, times)
 
             # Pull the filtered values
             filtered_output = result[indices]
             result = filtered_output
 
         if (self.reject == True):
-            if (self.reject_parameter_combination(result)):
+            if fitting:
+                prop_day = (times[-1]-times[0])/day_len
+            else:
+                prop_day = 1
+            if (self.reject_parameter_combination(result, prop_day)):
                 return np.full((len(result), np.shape(result)[1]), 5000)
             
         return result
@@ -501,7 +516,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
-    def reject_parameter_combination(self, result): 
+    def reject_parameter_combination(self, result, prop_day):
         for i in range(result.shape[1]):
             if i <= 2: # only check first three states
                 signals, _ = scipy_signal.find_peaks(result[:, i])
@@ -509,7 +524,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
 
                 lower_bound, upper_bound = self.signal_range
 
-                if not (lower_bound <= number_of_signals <= upper_bound): 
+                if not (int(prop_day*lower_bound) <= number_of_signals <= int(prop_day*upper_bound)): 
                     return True
         
         return False
@@ -545,6 +560,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.HPAModelFEInterCBGAlb
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
+        self.times_fitting = self.times[self.truncate_idx:] - self.times[self.truncate_idx]
         self.reltol = reltol
         self.abstol = abstol
         p = jl.seval(f"ntuple(i -> 1, {len(self.all_pars)})")
@@ -635,7 +651,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         try:
             result_array = jl.solve_dde_fast(
                 self.base_prob, p, lags, self.alg,
-                self.reltol, self.abstol, self.truncate_idx
+                self.reltol, self.abstol
             )
             result = np.asarray(result_array)
         except JuliaError:
@@ -644,14 +660,18 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
 
         if fitting:
             # Find nearest indices
-            indices = np.searchsorted(self.times, times)
+            indices = np.searchsorted(self.times_fitting, times)
 
             # Pull the filtered values
             filtered_output = result[indices]
             result = filtered_output
 
         if (self.reject == True):
-            if (self.reject_parameter_combination(result)):
+            if fitting:
+                prop_day = (times[-1]-times[0])/day_len
+            else:
+                prop_day = 1
+            if (self.reject_parameter_combination(result, prop_day)):
                 return np.full((len(result), np.shape(result)[1]), 5000)
 
         return result
@@ -681,7 +701,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
-    def reject_parameter_combination(self, result): 
+    def reject_parameter_combination(self, result, prop_day):
         for i in range(result.shape[1]):
             if i <= 2: # only check first three states
                 signals, _ = scipy_signal.find_peaks(result[:, i])
@@ -689,7 +709,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
 
                 lower_bound, upper_bound = self.signal_range
 
-                if not (lower_bound <= number_of_signals <= upper_bound): 
+                if not (int(prop_day*lower_bound) <= number_of_signals <= int(prop_day*upper_bound)): 
                     return True
         
         return False
@@ -725,6 +745,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.HPAModelFEInterCBGAlbBloodISF
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
+        self.times_fitting = self.times[self.truncate_idx:] - self.times[self.truncate_idx]
         self.reltol = reltol
         self.abstol = abstol
         p = jl.seval(f"ntuple(i -> 1, {len(self.all_pars)})")
@@ -790,7 +811,8 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         k_Foff = par_dict['k_Foff'] # F protein off-binding rate
         k_Eon = par_dict['k_Eon'] # E protein on-binding rate
         k_Eoff = par_dict['k_Eoff'] # E protein off-binding rate
-        k_BI = par_dict['k_BI'] # Permeability constant (new param)
+        k_BI_F = par_dict['k_BI_F'] # Cortisol permeability constant (new param)
+        k_BI_E = par_dict['k_BI_E'] # Cortisone permeability constant (new param)
         m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
         m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
         V_f = par_dict['V_f'] # Max. cortisol to cortisone rate
@@ -808,13 +830,14 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
 
         lags = [tau]
         p = (gamma_a, gamma_f_b, gamma_f_i, gamma_e_b, gamma_e_i, K_a, K_f, K_mf, K_me, 
-             k_Fon, k_Foff, k_Eon, k_Eoff, k_BI, m_a, m_f, V_f, V_e, V_B, V_I, tau, alpha, lambda_a, lambda_s, t_s, sigma)
+             k_Fon, k_Foff, k_Eon, k_Eoff, k_BI_F, k_BI_E, m_a, m_f, V_f, V_e, V_B, V_I, 
+             tau, alpha, lambda_a, lambda_s, t_s, sigma)
         
         # Define DDE problem and solve
         try:
             result_array = jl.solve_dde_fast(
                 self.base_prob, p, lags, self.alg,
-                self.reltol, self.abstol, self.truncate_idx
+                self.reltol, self.abstol
             )
             result = np.asarray(result_array)
         except JuliaError:
@@ -822,15 +845,17 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
 
         if fitting:
-            # Find nearest indices
-            indices = np.searchsorted(self.times, times)
-
+            indices = np.searchsorted(self.times_fitting, times)
             # Pull the filtered values
             filtered_output = result[indices]
             result = filtered_output
 
         if (self.reject == True):
-            if (self.reject_parameter_combination(result)):
+            if fitting:
+                prop_day = (times[-1]-times[0])/day_len
+            else:
+                prop_day = 1
+            if (self.reject_parameter_combination(result, prop_day)):
                 return np.full((len(result), np.shape(result)[1]), 5000)
 
         return result
@@ -860,7 +885,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
-    def reject_parameter_combination(self, result): 
+    def reject_parameter_combination(self, result, prop_day):
         for i in range(result.shape[1]):
             if i <= 2: # only check first three states
                 signals, _ = scipy_signal.find_peaks(result[:, i])
@@ -868,7 +893,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
 
                 lower_bound, upper_bound = self.signal_range
 
-                if not (lower_bound <= number_of_signals <= upper_bound): 
+                if not (int(prop_day*lower_bound) <= number_of_signals <= int(prop_day*upper_bound)): 
                     return True
         
         return False
@@ -904,6 +929,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
         self.model = HPADDEModels.HPAModelFEInterBothCBGAlbBloodISF
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
+        self.times_fitting = self.times[self.truncate_idx:] - self.times[self.truncate_idx]
         self.reltol = reltol
         self.abstol = abstol
         p = jl.seval(f"ntuple(i -> 1, {len(self.all_pars)})")
@@ -998,7 +1024,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         try:
             result_array = jl.solve_dde_fast(
                 self.base_prob, p, lags, self.alg,
-                self.reltol, self.abstol, self.truncate_idx
+                self.reltol, self.abstol
             )
             result = np.asarray(result_array)
         except JuliaError:
@@ -1007,14 +1033,18 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
 
         if fitting:
             # Find nearest indices
-            indices = np.searchsorted(self.times, times)
+            indices = np.searchsorted(self.times_fitting, times)
 
             # Pull the filtered values
             filtered_output = result[indices]
             result = filtered_output
 
         if (self.reject == True):
-            if (self.reject_parameter_combination(result)):
+            if fitting:
+                prop_day = (times[-1]-times[0])/day_len
+            else:
+                prop_day = 1
+            if (self.reject_parameter_combination(result, prop_day)):
                 return np.full((len(result), np.shape(result)[1]), 5000)
 
         return result
@@ -1044,7 +1074,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
-    def reject_parameter_combination(self, result): 
+    def reject_parameter_combination(self, result, prop_day):
         for i in range(result.shape[1]):
             if i <= 2: # only check first three states
                 signals, _ = scipy_signal.find_peaks(result[:, i])
@@ -1052,7 +1082,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
 
                 lower_bound, upper_bound = self.signal_range
 
-                if not (lower_bound <= number_of_signals <= upper_bound): 
+                if not (int(prop_day*lower_bound) <= number_of_signals <= int(prop_day*upper_bound)): 
                     return True
         
         return False
