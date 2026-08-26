@@ -17,10 +17,10 @@
         "V_e": 6,
         "tau": 22.187837769999998,
         "alpha": 20.78240012,
-        "lambda_a": 9.324924679,
-        "lambda_s": 2.941013892,
+        "lambda_a": 9,
+        "lambda_s": 3,
         "t_s": 0,
-        "sigma": 0.7268412216
+        "sigma": 0.5
     },
     "initial_conditions": {
         "A": 5,

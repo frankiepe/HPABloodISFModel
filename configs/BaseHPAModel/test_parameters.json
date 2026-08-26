@@ -11,7 +11,7 @@
         "lambda_a": 9,
         "lambda_s": 3,
         "t_s": 0,
-        "sigma": 0.75
+        "sigma": 0.5
     },
     "initial_conditions": {
         "A": 5,
