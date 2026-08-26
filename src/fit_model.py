@@ -97,9 +97,17 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
     # Load data
     timesISF, timesBP, CORT, Cortisone, ACTH, mCORT, mCortisone = dp.get_data(d_n)
     sBP = pd.to_datetime(pd.Series(timesBP))
-    timesBP = (sBP - sBP.iloc[0]).dt.total_seconds() / 60
+    startBP = ((sBP - sBP.iloc[0].floor('D')).dt.total_seconds()[0] / 60)
     sISF = pd.to_datetime(pd.Series(timesISF))
+    startISF = ((sISF - sISF.iloc[0].floor('D')).dt.total_seconds()[0] / 60)
+    timesBP = (sBP - sBP.iloc[0]).dt.total_seconds() / 60
     timesISF = (sISF - sISF.iloc[0]).dt.total_seconds() / 60
+
+    # Align BP and ISF datasets
+    if startBP < startISF:
+        timesISF = timesISF+startISF-startBP
+    elif startISF < startBP:
+        timesBP = timesBP+startBP-startISF
 
     # Define Pints problem for optimisation
     if m_n in ['1','6']:
@@ -121,6 +129,18 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
     # Get parameter initialisation
     np.random.seed(rseed)
     q0 = list(init_pars.values())
+    print(f'q0 start: {q0}')
+    print(f'eval q0 start: {f(q0)}')
+    minobj = f(q0)
+    for i in range(250):
+        q1 = bounds.sample()
+        evalobj = f(list(q1[0]))
+        if evalobj < minobj:
+            q0 = list(q1[0])
+            minobj = evalobj
+            print(f'Updating q0 with objective: {minobj}')
+    print(f'q0 end: {q0}')
+    print(f'eval q0 end: {f(q0)}')
 
     # Define Pints optimiser
     opt = pints.OptimisationController(
