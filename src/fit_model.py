@@ -132,7 +132,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
     print(f'q0 start: {q0}')
     print(f'eval q0 start: {f(q0)}')
     minobj = f(q0)
-    for i in range(250):
+    for i in range(500):
         q1 = bounds.sample()
         evalobj = f(list(q1[0]))
         if evalobj < minobj:
@@ -145,12 +145,12 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
     # Define Pints optimiser
     opt = pints.OptimisationController(
             f, q0, boundaries=bounds, method=pints.CMAES)
-    opt.set_max_iterations(5000)
+    opt.set_max_iterations(1000)
     opt.set_log_interval(iters=100, warm_up=5)
     opt.set_function_tolerance(iterations=250, threshold=1e-3)
 
     # Simulate initial parameterisation
-    res_init = dde_model.simulate(q0, times, fitting=False)
+    res_init = dde_model.simulate(q0, times, fitting=False, reject=False)
 
     # Get CRH drive
     crh_drive = [dde_model.crh(t) for t in times[int((day_len*warmup)/step):]]
@@ -164,7 +164,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
     p, s = opt.run()
 
     # Simulate optimised parameterisation
-    res_fit = dde_model.simulate(p, times, fitting=False)
+    res_fit = dde_model.simulate(p, times, fitting=False, reject=False)
 
     crh_drive = [dde_model.crh(t, t_s=p[-2], lambda_a=p[-4], lambda_s=p[-3], sigma=p[-1]) for t in times[int((day_len*warmup)/step):]]
 

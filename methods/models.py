@@ -341,7 +341,7 @@ class HPAModelFEInter(pints.ForwardModel):
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
     def reject_parameter_combination(self, result, prop_day):
-        for i in range(result.shape[1]):
+        for i in range(result.shape[1]-1):
             signals, _ = scipy_signal.find_peaks(result[:, i])
             number_of_signals = len(signals)
 
@@ -517,16 +517,13 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
     def reject_parameter_combination(self, result, prop_day):
-        for i in range(result.shape[1]):
-            if i <= 2: # only check first three states
-                signals, _ = scipy_signal.find_peaks(result[:, i])
-                number_of_signals = len(signals)
-
-                lower_bound, upper_bound = self.signal_range
-
-                if not (int(prop_day*lower_bound) <= number_of_signals <= int(prop_day*upper_bound)): 
-                    return True
-        
+        lower_bound, upper_bound = self.signal_range
+        signals_ACTH, _ = scipy_signal.find_peaks(result[:, 0])
+        signals_CORT, _ = scipy_signal.find_peaks(result[:, 1]+result[:, 3])
+        if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)): 
+            return True
+        elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
+            return True
         return False
 
 class HPAModelFEInterCBGAlb(pints.ForwardModel):
@@ -784,8 +781,8 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
                                 + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
         )
 
-    def simulate(self, parameters, times, fitting=True):
-        
+    def simulate(self, parameters, times, fitting=True, reject=True):
+
         # Assign parameters
         for i, key in enumerate(self.param_keys):
             self.parameters[key] = parameters[i]
@@ -850,7 +847,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
             filtered_output = result[indices]
             result = filtered_output
 
-        if (self.reject == True):
+        if (self.reject == True) and (reject == True):
             if fitting:
                 prop_day = (times[-1]-times[0])/day_len
             else:
@@ -886,16 +883,13 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
     def reject_parameter_combination(self, result, prop_day):
-        for i in range(result.shape[1]):
-            if i <= 2: # only check first three states
-                signals, _ = scipy_signal.find_peaks(result[:, i])
-                number_of_signals = len(signals)
-
-                lower_bound, upper_bound = self.signal_range
-
-                if not (int(prop_day*lower_bound) <= number_of_signals <= int(prop_day*upper_bound)): 
-                    return True
-        
+        lower_bound, upper_bound = self.signal_range
+        signals_ACTH, _ = scipy_signal.find_peaks(result[:, 0])
+        signals_CORT, _ = scipy_signal.find_peaks(result[:, 1]+result[:, 3])
+        if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)): 
+            return True
+        elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
+            return True
         return False
 
 class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
@@ -968,7 +962,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
                                 + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
         )
 
-    def simulate(self, parameters, times, fitting=True):
+    def simulate(self, parameters, times, fitting=True, reject=True):
         
         # Assign parameters
         for i, key in enumerate(self.param_keys):
@@ -1039,7 +1033,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
             filtered_output = result[indices]
             result = filtered_output
 
-        if (self.reject == True):
+        if (self.reject == True) and (reject == True):
             if fitting:
                 prop_day = (times[-1]-times[0])/day_len
             else:
@@ -1075,16 +1069,13 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
     def reject_parameter_combination(self, result, prop_day):
-        for i in range(result.shape[1]):
-            if i <= 2: # only check first three states
-                signals, _ = scipy_signal.find_peaks(result[:, i])
-                number_of_signals = len(signals)
-
-                lower_bound, upper_bound = self.signal_range
-
-                if not (int(prop_day*lower_bound) <= number_of_signals <= int(prop_day*upper_bound)): 
-                    return True
-        
+        lower_bound, upper_bound = self.signal_range
+        signals_ACTH, _ = scipy_signal.find_peaks(result[:, 0])
+        signals_CORT, _ = scipy_signal.find_peaks(result[:, 1]+result[:, 3])
+        if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)): 
+            return True
+        elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
+            return True
         return False
 
 class HPAModelCRHSupp(pints.ForwardModel):
