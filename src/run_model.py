@@ -56,18 +56,15 @@ def run_model(m_n, step, warmup, days_to_keep=1):
     dde_model = model(parameters=pars, fixed_pars={}, init_conds=ics, times=times, 
                       num_days=num_days, days_to_keep=days_to_keep, step=step)
 
-    # Get plotting times (some cropping may occur if day_len/step != whole number)
-    plot_times = times[int((day_len/step)*(num_days-days_to_keep)):] - (day_len)*(num_days-days_to_keep)
-
     # Run the simulation
     print("Running simulation...")       
-    result = dde_model.simulate(list(pars.values()), plot_times, fitting=False)
+    result = dde_model.simulate(list(pars.values()), times, fitting=False)
     print("Simulation complete.")
 
     # Get CRH drive
-    crh_drive = [dde_model.crh(t) for t in plot_times]
+    crh_drive = [dde_model.crh(t) for t in times[int((day_len*warmup)/step):]]
 
-    return result, plot_times, crh_drive
+    return result, times, crh_drive
 
 if __name__ == "__main__":
     m_n = args.model
@@ -79,4 +76,4 @@ if __name__ == "__main__":
         os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots')
 
     res, times, crh_drive = run_model(m_n, step, warmup)
-    plotting.plot_model_output(m_n, res, times, crh_drive, outdir=outdir, filename=f'model_output', days_to_keep=1)
+    plotting.plot_model_output(m_n, res, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, outdir=outdir, filename=f'model_output', days_to_keep=1)

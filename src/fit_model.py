@@ -92,7 +92,8 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
         full_model = m_wrap(dde_model, init_pars, times)
     else:
         full_model1 = m_wrap1(dde_model, init_pars, times)
-        full_model2 = m_wrap2(dde_model, init_pars, times)
+        dde_modelISF = model(parameters=init_pars, fixed_pars=fixed_pars, init_conds=ics, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
+        full_model2 = m_wrap2(dde_modelISF, init_pars, times)
 
     # Load data
     timesISF, timesBP, CORT, Cortisone, ACTH, mCORT, mCortisone = dp.get_data(d_n)
@@ -145,7 +146,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
     # Define Pints optimiser
     opt = pints.OptimisationController(
             f, q0, boundaries=bounds, method=pints.CMAES)
-    opt.set_max_iterations(1000)
+    opt.set_max_iterations(5000)
     opt.set_log_interval(iters=100, warm_up=5)
     opt.set_function_tolerance(iterations=250, threshold=1e-3)
 
