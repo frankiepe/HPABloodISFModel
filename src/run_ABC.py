@@ -88,14 +88,23 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, reps, days_to_keep=1):
         full_model = m_wrap(dde_model, init_pars, times)
     else:
         full_model1 = m_wrap1(dde_model, init_pars, times)
-        full_model2 = m_wrap2(dde_model, init_pars, times) 
+        dde_modelISF = model(parameters=init_pars, fixed_pars=fixed_pars, init_conds=ics, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
+        full_model2 = m_wrap2(dde_modelISF, init_pars, times) 
 
     # Load data
     timesISF, timesBP, CORT, Cortisone, ACTH, mCORT, mCortisone = dp.get_data(d_n)
     sBP = pd.to_datetime(pd.Series(timesBP))
-    timesBP = (sBP - sBP.iloc[0]).dt.total_seconds() / 60
+    startBP = ((sBP - sBP.iloc[0].floor('D')).dt.total_seconds()[0] / 60)
     sISF = pd.to_datetime(pd.Series(timesISF))
+    startISF = ((sISF - sISF.iloc[0].floor('D')).dt.total_seconds()[0] / 60)
+    timesBP = (sBP - sBP.iloc[0]).dt.total_seconds() / 60
     timesISF = (sISF - sISF.iloc[0]).dt.total_seconds() / 60
+
+    # Align BP and ISF datasets
+    if startBP < startISF:
+        timesISF = timesISF+startISF-startBP
+    elif startISF < startBP:
+        timesBP = timesBP+startBP-startISF
 
     # Define Pints problem for optimisation
     if m_n in ['1','6']:

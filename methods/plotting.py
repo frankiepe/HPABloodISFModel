@@ -261,11 +261,21 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
     ax1.set_ylabel('nmol/L')
     
     print(f"Plotting data for individual #{d_n}...")
+    # Load data
     timesISF, timesBP, CORT, Cortisone, ACTH, mCORT, mCortisone = dp.get_data(d_n)
     sBP = pd.to_datetime(pd.Series(timesBP))
-    timesBP = (sBP - sBP.iloc[0]).dt.total_seconds() / 60
+    startBP = ((sBP - sBP.iloc[0].floor('D')).dt.total_seconds()[0] / 60)
     sISF = pd.to_datetime(pd.Series(timesISF))
+    startISF = ((sISF - sISF.iloc[0].floor('D')).dt.total_seconds()[0] / 60)
+    timesBP = (sBP - sBP.iloc[0]).dt.total_seconds() / 60
     timesISF = (sISF - sISF.iloc[0]).dt.total_seconds() / 60
+
+    # Align BP and ISF datasets
+    if startBP < startISF:
+        timesISF = timesISF+startISF-startBP
+    elif startISF < startBP:
+        timesBP = timesBP+startBP-startISF
+    
     if m_n in ['1','2','6']:
         ax1.plot(timesBP, CORT, label='Cortisol data', color='blue', marker='o')
         ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
