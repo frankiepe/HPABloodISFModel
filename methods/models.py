@@ -87,7 +87,7 @@ class BaseHPAModel(pints.ForwardModel):
                                 + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
         )
 
-    def simulate(self, parameters, times, fitting=True):
+    def simulate(self, parameters, times, fitting=True, reject=True):
         # Assign parameters
         for i, key in enumerate(self.param_keys):
             self.parameters[key] = parameters[i]
@@ -136,7 +136,7 @@ class BaseHPAModel(pints.ForwardModel):
             filtered_output = result[indices]
             result = filtered_output
 
-        if (self.reject == True):
+        if (self.reject == True) and (reject == True):
             if fitting:
                 prop_day = (times[-1]-times[0])/day_len
             else:
@@ -249,7 +249,7 @@ class HPAModelFEInter(pints.ForwardModel):
                                 + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
         )
 
-    def simulate(self, parameters, times, fitting=True):
+    def simulate(self, parameters, times, fitting=True, reject=True):
         # Assign parameters
         for i, key in enumerate(self.param_keys):
             self.parameters[key] = parameters[i]
@@ -305,7 +305,7 @@ class HPAModelFEInter(pints.ForwardModel):
             filtered_output = result[indices]
             result = filtered_output
 
-        if (self.reject == True):
+        if (self.reject == True) and (reject == True):
             if fitting:
                 prop_day = (times[-1]-times[0])/day_len
             else:
@@ -420,7 +420,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
                                 + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
         )
 
-    def simulate(self, parameters, times, fitting=True):
+    def simulate(self, parameters, times, fitting=True, reject=True):
         
         # Assign parameters
         for i, key in enumerate(self.param_keys):
@@ -481,7 +481,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
             filtered_output = result[indices]
             result = filtered_output
 
-        if (self.reject == True):
+        if (self.reject == True) and (reject == True):
             if fitting:
                 prop_day = (times[-1]-times[0])/day_len
             else:
@@ -598,7 +598,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
                                 + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
         )
 
-    def simulate(self, parameters, times, fitting=True):
+    def simulate(self, parameters, times, fitting=True, reject=True):
         
         # Assign parameters
         for i, key in enumerate(self.param_keys):
@@ -663,7 +663,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
             filtered_output = result[indices]
             result = filtered_output
 
-        if (self.reject == True):
+        if (self.reject == True) and (reject == True):
             if fitting:
                 prop_day = (times[-1]-times[0])/day_len
             else:
