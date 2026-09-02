@@ -50,7 +50,7 @@ class BaseHPAModel(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Tsit5())
         self.model = HPADDEModels.BaseHPAModel
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.times_fitting = self.times[self.truncate_idx:] - self.times[self.truncate_idx]
@@ -211,7 +211,7 @@ class HPAModelFEInter(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Tsit5())
         self.model = HPADDEModels.HPAModelFEInter
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.times_fitting = self.times[self.truncate_idx:] - self.times[self.truncate_idx]
@@ -380,7 +380,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Tsit5())
         self.model = HPADDEModels.HPAModelFEInterCBGAlbSimple
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.times_fitting = self.times[self.truncate_idx:] - self.times[self.truncate_idx]
@@ -554,7 +554,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Tsit5())
         self.model = HPADDEModels.HPAModelFEInterCBGAlb
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.times_fitting = self.times[self.truncate_idx:] - self.times[self.truncate_idx]
@@ -739,7 +739,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Tsit5())
         self.model = HPADDEModels.HPAModelFEInterCBGAlbBloodISF
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.times_fitting = self.times[self.truncate_idx:] - self.times[self.truncate_idx]
@@ -920,7 +920,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = DDE.MethodOfSteps(DiffEq.Vern7())
+        self.alg = DDE.MethodOfSteps(DiffEq.Tsit5())
         self.model = HPADDEModels.HPAModelFEInterBothCBGAlbBloodISF
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.times_fitting = self.times[self.truncate_idx:] - self.times[self.truncate_idx]
