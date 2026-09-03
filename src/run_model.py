@@ -58,7 +58,7 @@ def run_model(m_n, step, warmup, days_to_keep=1):
 
     # Run the simulation
     print("Running simulation...")       
-    result = dde_model.simulate(list(pars.values()), times, fitting=False)
+    result = dde_model.simulate(list(pars.values()), times, fitting=False, reject=False)
     print("Simulation complete.")
 
     # Get CRH drive
