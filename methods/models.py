@@ -28,7 +28,7 @@ class BaseHPAModel(pints.ForwardModel):
                  fixed_pars,
                  init_conds,
                  times,
-                 signal_range = (7,13),
+                 signal_range = (6,13),
                  num_days=6,
                  days_to_keep=1,
                  step=0.1,
@@ -189,7 +189,7 @@ class HPAModelFEInter(pints.ForwardModel):
                  fixed_pars,
                  init_conds,
                  times,
-                 signal_range = (7,13),
+                 signal_range = (6,13),
                  num_days=6,
                  days_to_keep=1,
                  step=0.1,
@@ -358,7 +358,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
                     fixed_pars,
                     init_conds,
                     times,
-                    signal_range = (7,13),
+                    signal_range = (6,13),
                     num_days=6,
                     days_to_keep=1,
                     step=0.1,
@@ -516,17 +516,17 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
-    # Or if the ratio of free cortisol to total cortisol exceeds 0.5
+    # Or if the ratio of free cortisol to total cortisol exceeds 0.35
     def reject_parameter_combination(self, result, prop_day):
         lower_bound, upper_bound = self.signal_range
         total_CORT = result[:, 1]+result[:, 3]
         signals_ACTH, _ = scipy_signal.find_peaks(result[:, 0])
         signals_CORT, _ = scipy_signal.find_peaks(total_CORT)
-        if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)): 
+        if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
             return True
         elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
             return True
-        elif (result[:, 1]/total_CORT).max() > 0.5:
+        elif (result[:, 1]/total_CORT).max() > 0.35:
             return True
         return False
 
@@ -536,7 +536,7 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
                     fixed_pars,
                     init_conds,
                     times,
-                    signal_range = (7,13),
+                    signal_range = (6,13),
                     num_days=6,
                     days_to_keep=1,
                     step=0.1,
@@ -721,7 +721,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
                     fixed_pars,
                     init_conds,
                     times,
-                    signal_range = (7,13),
+                    signal_range = (6,13),
                     num_days=6,
                     days_to_keep=1,
                     step=0.1,
@@ -886,17 +886,17 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
-    # Or if the ratio of free cortisol to total cortisol exceeds 0.5
+    # Or if the ratio of free cortisol to total cortisol exceeds 0.35
     def reject_parameter_combination(self, result, prop_day):
         lower_bound, upper_bound = self.signal_range
         total_CORT = result[:, 1]+result[:, 3]
         signals_ACTH, _ = scipy_signal.find_peaks(result[:, 0])
         signals_CORT, _ = scipy_signal.find_peaks(total_CORT)
-        if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)): 
+        if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
             return True
         elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
             return True
-        elif (result[:, 1]/total_CORT).max() > 0.5:
+        elif (result[:, 1]/total_CORT).max() > 0.35:
             return True
         return False
 
@@ -906,7 +906,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
                     fixed_pars,
                     init_conds,
                     times,
-                    signal_range = (7,13),
+                    signal_range = (6,13),
                     num_days=6,
                     days_to_keep=1,
                     step=0.1,
@@ -999,7 +999,8 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         k_Foff = par_dict['k_Foff'] # F protein off-binding rate
         k_Eon = par_dict['k_Eon'] # E protein on-binding rate
         k_Eoff = par_dict['k_Eoff'] # E protein off-binding rate
-        k_BI = par_dict['k_BI'] # Permeability constant
+        k_BI_F = par_dict['k_BI_F'] # Cortisiol permeability constant
+        k_BI_E = par_dict['k_BI_E'] # Cortisone permeability constant
         m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
         m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
         V_f_b = par_dict['V_f_b'] # Max. cortisol to cortisone rate in BP
@@ -1019,7 +1020,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
 
         lags = [tau]
         p = (gamma_a, gamma_f_b, gamma_f_i, gamma_e_b, gamma_e_i, K_a, K_f, K_mfB, 
-             K_meB, K_mfI, K_meI, k_Fon, k_Foff, k_Eon, k_Eoff, k_BI, m_a, m_f, V_f_b,
+             K_meB, K_mfI, K_meI, k_Fon, k_Foff, k_Eon, k_Eoff, k_BI_F, k_BI_E, m_a, m_f, V_f_b,
              V_e_b, V_f_i, V_e_i, V_B, V_I, tau, alpha, lambda_a, lambda_s, t_s, sigma)
         
         # Define DDE problem and solve
@@ -1075,14 +1076,18 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
 
-    # Function to reject parameter combination if number of peaks are outside a plausible range
+    ## Function to reject parameter combination if number of peaks are outside a plausible range
+    # Or if the ratio of free cortisol to total cortisol exceeds 0.35
     def reject_parameter_combination(self, result, prop_day):
         lower_bound, upper_bound = self.signal_range
+        total_CORT = result[:, 1]+result[:, 3]
         signals_ACTH, _ = scipy_signal.find_peaks(result[:, 0])
-        signals_CORT, _ = scipy_signal.find_peaks(result[:, 1]+result[:, 3])
-        if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)): 
+        signals_CORT, _ = scipy_signal.find_peaks(total_CORT)
+        if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
             return True
         elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
+            return True
+        elif (result[:, 1]/total_CORT).max() > 0.35:
             return True
         return False
 
