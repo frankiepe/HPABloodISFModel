@@ -123,27 +123,30 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, reps, days_to_keep=1):
     # Set up model boundaries
     bounds = dde_model.get_and_create_boundaries()
 
-    # Run ABC
-    pars_all = []
-    objs = []
+    # Keep every sample for post-processing, but store them in compact NumPy arrays
+    # rather than Python lists of arrays, which reduces memory overhead substantially.
+    n_pars = len(init_pars)
+    pars_all = np.empty((reps, n_pars), dtype=float)
+    objs = np.empty(reps, dtype=float)
+
     for i in np.arange(0,reps):
-        if i % 100 == 0:
+        if i % 5000 == 0:
             print(f"Iteration {i}/{reps}")
-        par_i = bounds.sample(1)[0] # sample
+        par_i = np.asarray(bounds.sample(1)[0], dtype=float) # sample
         with warnings.catch_warnings(record=True) as caught_warnings:
             warnings.simplefilter("always", RuntimeWarning)
-            obj_i = f(list(par_i)) # evaluate objective
+            obj_i = float(f(list(par_i))) # evaluate objective
 
             # Process any captured Runtime warnings
             if len(caught_warnings) > 0:
                 print(f"{par_i} produced warning(s)")
                 print(f"Correponds to objective of: {obj_i}")
 
-        objs.append(obj_i)
-        pars_all.append(par_i)
+        pars_all[i] = par_i
+        objs[i] = obj_i
 
-    o_arr = np.array(objs)
-    p_arr = np.array(pars_all)
+    o_arr = objs
+    p_arr = pars_all
     indices = np.argsort(o_arr)
     sorted_o = o_arr[indices]
     sorted_p = p_arr[indices]
