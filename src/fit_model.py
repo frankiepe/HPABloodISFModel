@@ -133,7 +133,9 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
     print(f'q0 start: {q0}')
     print(f'eval q0 start: {f(q0)}')
     minobj = f(q0)
-    for i in range(1000):
+    for i in range(10000):
+        if i % 1000 == 0:
+            print(f'Initial sampling, iteration {i} of 10000')
         q1 = bounds.sample()
         evalobj = f(list(q1[0]))
         if evalobj < minobj:

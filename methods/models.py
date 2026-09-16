@@ -13,12 +13,12 @@ DiffEq = jl.seval("DifferentialEquations")
 jl.seval("""
 using .DelayDiffEq, .DifferentialEquations
 
-function solve_dde_fast(prob, new_p, lags, alg, reltol, abstol)
+function solve_dde_fast(prob, new_p, lags, alg, reltol, abstol, first_saved_idx)
     p_jl = Vector{Float64}(collect(new_p))
     lags_jl = Vector{Float64}(collect(lags))
     new_prob = remake(prob, p=p_jl, constant_lags=lags_jl)
     sol = solve(new_prob, alg, reltol=reltol, abstol=abstol)
-    return sol
+    return permutedims(Array(sol[:, first_saved_idx:end]))
 end
 """)
 
@@ -119,14 +119,13 @@ class BaseHPAModel(pints.ForwardModel):
         p = (gamma_a, gamma_c, K_a, K_c, m_a, m_c, tau, alpha, lambda_a, lambda_s, t_s, sigma)
 
         try:
-            result_array = jl.solve_dde_fast(
+            result = jl.solve_dde_fast(
                 self.base_prob, p, lags, self.alg, 
-                self.reltol, self.abstol
+                self.reltol, self.abstol, self.truncate_idx + 1
             )
-            result = np.asarray(result_array)
         except JuliaError:
-            result = np.full((len(self.init_conds), len(self.times)), 5000)
-        result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
+            result = np.full((len(self.times) - self.truncate_idx, len(self.init_conds)), 5000)
+        result = np.asarray(result)        
 
         if fitting:
             # Find nearest indices
@@ -288,14 +287,13 @@ class HPAModelFEInter(pints.ForwardModel):
         
         # Define DDE problem and solve
         try:
-            result_array = jl.solve_dde_fast(
+            result = jl.solve_dde_fast(
                 self.base_prob, p, lags, self.alg,
-                self.reltol, self.abstol
+                self.reltol, self.abstol, self.truncate_idx + 1
             )
-            result = np.asarray(result_array)
         except JuliaError:
-            result = np.full((len(self.init_conds), len(self.times)), 5000)
-        result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
+            result = np.full((len(self.times) - self.truncate_idx, len(self.init_conds)), 5000)
+        result = np.asarray(result)
 
         if fitting:
             # Find nearest indices
@@ -464,14 +462,13 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         
         # Define DDE problem and solve
         try:
-            result_array = jl.solve_dde_fast(
+            result = jl.solve_dde_fast(
                 self.base_prob, p, lags, self.alg,
-                self.reltol, self.abstol
+                self.reltol, self.abstol, self.truncate_idx + 1
             )
-            result = np.asarray(result_array)
         except JuliaError:
-            result = np.full((len(self.init_conds), len(self.times)), 5000) 
-        result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
+            result = np.full((len(self.times) - self.truncate_idx, len(self.init_conds)), 5000)
+        result = np.asarray(result)
 
         if fitting:
             # Find nearest indices
@@ -516,7 +513,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
-    # Or if the ratio of free cortisol to total cortisol exceeds 0.35
+    # Or if the ratio of free cortisol to total cortisol exceeds 0.25
     def reject_parameter_combination(self, result, prop_day):
         lower_bound, upper_bound = self.signal_range
         total_CORT = result[:, 1]+result[:, 3]
@@ -526,7 +523,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
             return True
         elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
             return True
-        elif (result[:, 1]/total_CORT).max() > 0.35:
+        elif (result[:, 1]/total_CORT).max() > 0.25:
             return True
         return False
 
@@ -650,14 +647,13 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
         
         # Define DDE problem and solve
         try:
-            result_array = jl.solve_dde_fast(
+            result = jl.solve_dde_fast(
                 self.base_prob, p, lags, self.alg,
-                self.reltol, self.abstol
+                self.reltol, self.abstol, self.truncate_idx + 1
             )
-            result = np.asarray(result_array)
         except JuliaError:
-            result = np.full((len(self.init_conds), len(self.times)), 5000) 
-        result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
+            result = np.full((len(self.times) - self.truncate_idx, len(self.init_conds)), 5000)
+        result = np.asarray(result)
 
         if fitting:
             # Find nearest indices
@@ -836,14 +832,13 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         
         # Define DDE problem and solve
         try:
-            result_array = jl.solve_dde_fast(
+            result = jl.solve_dde_fast(
                 self.base_prob, p, lags, self.alg,
-                self.reltol, self.abstol
+                self.reltol, self.abstol, self.truncate_idx + 1
             )
-            result = np.asarray(result_array)
         except JuliaError:
-            result = np.full((len(self.init_conds), len(self.times)), 5000) 
-        result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
+            result = np.full((len(self.times) - self.truncate_idx, len(self.init_conds)), 5000)
+        result = np.asarray(result)
 
         if fitting:
             indices = np.searchsorted(self.times_fitting, times)
@@ -886,7 +881,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
-    # Or if the ratio of free cortisol to total cortisol exceeds 0.35
+    # Or if the ratio of free cortisol to total cortisol exceeds 0.25
     def reject_parameter_combination(self, result, prop_day):
         lower_bound, upper_bound = self.signal_range
         total_CORT = result[:, 1]+result[:, 3]
@@ -896,7 +891,7 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
             return True
         elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
             return True
-        elif (result[:, 1]/total_CORT).max() > 0.35:
+        elif (result[:, 1]/total_CORT).max() > 0.25:
             return True
         return False
 
@@ -1025,14 +1020,13 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         
         # Define DDE problem and solve
         try:
-            result_array = jl.solve_dde_fast(
+            result = jl.solve_dde_fast(
                 self.base_prob, p, lags, self.alg,
-                self.reltol, self.abstol
+                self.reltol, self.abstol, self.truncate_idx + 1
             )
-            result = np.asarray(result_array)
         except JuliaError:
-            result = np.full((len(self.init_conds), len(self.times)), 5000) 
-        result = np.asarray(jl.transpose(result[:, self.truncate_idx:]))
+            result = np.full((len(self.times) - self.truncate_idx, len(self.init_conds)), 5000)
+        result = np.asarray(result)
 
         if fitting:
             # Find nearest indices
@@ -1077,7 +1071,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
 
     ## Function to reject parameter combination if number of peaks are outside a plausible range
-    # Or if the ratio of free cortisol to total cortisol exceeds 0.35
+    # Or if the ratio of free cortisol to total cortisol exceeds 0.25
     def reject_parameter_combination(self, result, prop_day):
         lower_bound, upper_bound = self.signal_range
         total_CORT = result[:, 1]+result[:, 3]
@@ -1087,7 +1081,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
             return True
         elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
             return True
-        elif (result[:, 1]/total_CORT).max() > 0.35:
+        elif (result[:, 1]/total_CORT).max() > 0.25:
             return True
         return False
 
