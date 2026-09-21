@@ -150,7 +150,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
             f, q0, boundaries=bounds, method=pints.CMAES)
     opt.set_max_iterations(20000)
     opt.set_log_interval(iters=50, warm_up=5)
-    opt.set_function_tolerance(iterations=500, threshold=1e-3)
+    opt.set_function_tolerance(iterations=1000, threshold=1e-3)
 
     # Simulate initial parameterisation
     res_init = dde_model.simulate(q0, times, fitting=False, reject=False)
