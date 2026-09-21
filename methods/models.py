@@ -1071,7 +1071,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
 
     ## Function to reject parameter combination if number of peaks are outside a plausible range
-    # Or if the ratio of free cortisol to total cortisol exceeds 0.25
+    # Or if the ratio of free cortisol to total cortisol exceeds 0.2
     def reject_parameter_combination(self, result, prop_day):
         lower_bound, upper_bound = self.signal_range
         total_CORT = result[:, 1]+result[:, 3]
@@ -1081,7 +1081,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
             return True
         elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
             return True
-        elif (result[:, 1]/total_CORT).max() > 0.25:
+        elif (result[:, 1]/total_CORT).max() > 0.2:
             return True
         return False
 
