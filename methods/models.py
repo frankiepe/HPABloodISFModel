@@ -1039,11 +1039,12 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         if (self.reject == True) and (reject == True):
             if fitting:
                 prop_day = (times[-1]-times[0])/day_len
+                if (self.reject_parameter_combination(result, prop_day, times=times)):
+                    return np.full((len(result), np.shape(result)[1]), 5000)
             else:
                 prop_day = 1
-            if (self.reject_parameter_combination(result, prop_day)):
-                return np.full((len(result), np.shape(result)[1]), 5000)
-
+                if (self.reject_parameter_combination(result, prop_day, times=self.times_fitting)):
+                    return np.full((len(result), np.shape(result)[1]), 5000)
         return result
 
     def n_outputs(self):
@@ -1072,16 +1073,23 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
 
     ## Function to reject parameter combination if number of peaks are outside a plausible range
     # Or if the ratio of free cortisol to total cortisol exceeds 0.2
-    def reject_parameter_combination(self, result, prop_day):
+    # Or if the min time between peaks is less than 1hr
+    # Or if the max time between peaks is more than 8hrs
+    def reject_parameter_combination(self, result, prop_day, times):
         lower_bound, upper_bound = self.signal_range
         total_CORT = result[:, 1]+result[:, 3]
         signals_ACTH, _ = scipy_signal.find_peaks(result[:, 0])
         signals_CORT, _ = scipy_signal.find_peaks(total_CORT)
+        signal_times = times[signals_CORT]
+        if len(signal_times)>0:
+            period_CORT = np.append(np.diff(signal_times), day_len-signal_times[-1]+signal_times[0])
         if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
             return True
         elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
             return True
         elif (result[:, 1]/total_CORT).max() > 0.2:
+            return True
+        elif min(period_CORT) < 60 or max(period_CORT) > 480:
             return True
         return False
 
