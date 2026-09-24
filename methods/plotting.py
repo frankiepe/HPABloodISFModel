@@ -42,24 +42,26 @@ def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filenam
         ax2.set_ylabel('pmol/L')
         ax2.set_xlabel('Time (minutes)')
     else:
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12))
-        axes = [ax1, ax2, ax3]
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(20, 8))
+        axes = [ax1, ax2, ax3, ax4]
         F_tot = res.T[1]+res.T[3]
         E_tot = res.T[2]+res.T[4]
         ax1.plot(times, F_tot, label='Total Cortisol', color='blue')
         ax1.plot(times, res.T[1], label='Free Cortisol', color='green')
-        ax1.plot(times, E_tot, label='Total Cortisone', color='red')
-        ax1.plot(times, res.T[2], label='Free Cortisone', color='yellow')
-        ax2.plot(times, res.T[5], label='Free Cortisol', color='blue', alpha=0.5)
-        ax2.plot(times, res.T[6], label='Free Cortisone', color='red', alpha=0.5)
-        ax3.plot(times, res.T[0], label='ACTH', color='orange')
+        ax2.plot(times, E_tot, label='Total Cortisone', color='red')
+        ax2.plot(times, res.T[2], label='Free Cortisone', color='yellow')
+        ax3.plot(times, res.T[5], label='Free Cortisol', color='blue', alpha=0.5)
+        ax3.plot(times, res.T[6], label='Free Cortisone', color='red', alpha=0.5)
+        ax4.plot(times, res.T[0], label='ACTH', color='orange')
         ax1.set_ylabel('nmol/L')
         ax2.set_ylabel('nmol/L')
-        ax3.set_ylabel('pmol/L')
-        ax3.set_xlabel('Time (minutes)')
-        ax1.set_title('Cortisol and Cortisone in Blood Plasma')
-        ax2.set_title('Cortisol and Cortisone in ISF')
-        ax3.set_title('ACTH in Blood Plasma')
+        ax3.set_ylabel('nmol/L')
+        ax4.set_ylabel('pmol/L')
+        ax4.set_xlabel('Time (minutes)')
+        ax1.set_title('Cortisol in Blood Plasma')
+        ax2.set_title('Cortisone in Blood Plasma')
+        ax3.set_title('Cortisol and Cortisone in ISF')
+        ax4.set_title('ACTH in Blood Plasma')
 
     if plot_data:
         print(f"Plotting data for individual #{d_n}...")
@@ -84,13 +86,14 @@ def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filenam
                 ax1.plot(timesBP, Cortisone, label='Cortisone data', color='red', marker='o')
         elif m_n in ['3a','3b','4','5']:
             ax1.plot(timesBP, CORT, label='Total Cortisol data', color='blue', marker='o')
-            ax1.plot(timesBP, Cortisone, label='Total Cortisone data', color='red', marker='o')
             if m_n in ['3a','3b']:
+                ax1.plot(timesBP, Cortisone, label='Total Cortisone data', color='red', marker='o')
                 ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
             elif m_n in ['4', '5']:
-                ax2.plot(timesISF, mCORT, label='Free Cortisol data', color='blue', marker='o', alpha=0.5)
-                ax2.plot(timesISF, mCortisone, label='Free Cortisone data', color='red', marker='o', alpha=0.5)
-                ax3.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
+                ax2.plot(timesBP, Cortisone, label='Total Cortisone data', color='red', marker='o')
+                ax3.plot(timesISF, mCORT, label='Free Cortisol data', color='blue', marker='o', alpha=0.5)
+                ax3.plot(timesISF, mCortisone, label='Free Cortisone data', color='red', marker='o', alpha=0.5)
+                ax4.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
 
     for ax in axes:
         ax.set_xlim(list(times)[0], list(times)[-1])
@@ -109,7 +112,7 @@ def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filenam
     plt.savefig(f'{savedir}/{filename}.png')
     plt.close(fig)
 
-def plot_parameter_histograms(param_values, param_name, hist_file, thresh, bins=20):
+def plot_parameter_histograms(param_values, param_name, hist_file, thresh, bins=20, plot_best_fit=False, df=None):
     lb = pb[param_name][0]
     ub = pb[param_name][1]
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -127,6 +130,16 @@ def plot_parameter_histograms(param_values, param_name, hist_file, thresh, bins=
     ax.fill_between(xr, 0, kde(xr), color='tab:orange', alpha=0.4, label='Posterior')
     ax.axvline(np.mean(param_values), color='tab:orange', alpha = 0.4, linestyle='--', label='Posterior mean')
     ax.axvline(np.median(param_values), color='tab:orange', alpha = 0.4, linestyle='-.', label='Posterior median')
+    if plot_best_fit and df is not None:
+        i = 0
+        for best_fit in df[param_name]:
+            if i == 0:
+                ax.axvline(best_fit, color='tab:green', alpha = 0.8, linestyle=':', label='Best fits')
+                i+=1
+            else:
+                ax.axvline(best_fit, color='tab:green', alpha = 0.4, linestyle=':')
+    print(f"Mean of accepted values for parameter '{param_name}': {np.mean(param_values)}")
+    print(f"Median of accepted values for parameter '{param_name}': {np.median(param_values)}")
     ax.legend()
     fig.tight_layout()
     fig.savefig(hist_file)
@@ -140,12 +153,12 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
         if m_n == '1' or m_n == '6':
             if plot_rejected:
                 for par_i in pars_reject:
-                    res = dde_model.simulate(list(par_i), times, fitting=False)
+                    res = dde_model.simulate(list(par_i), times, fitting=False, reject=False)
                     ax1.plot(times, res.T[1], color='grey', alpha=0.05)
                     ax2.plot(times, res.T[0], color='grey', alpha=0.05)
             n = 0
             for par_i in pars_accept:
-                res = dde_model.simulate(list(par_i), times, fitting=False)
+                res = dde_model.simulate(list(par_i), times, fitting=False, reject=False)
                 if n == 0:
                     ax1.plot(times, res.T[1], label='Cortisol', color='blue', alpha=0.1)
                     ax2.plot(times, res.T[0], label='ACTH', color='orange', alpha=0.1)
@@ -157,13 +170,13 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
         elif m_n == '2':
             if plot_rejected:
                 for par_i in pars_reject:
-                    res = dde_model.simulate(list(par_i), times, fitting=False)
+                    res = dde_model.simulate(list(par_i), times, fitting=False, reject=False)
                     ax1.plot(times, res.T[1], color='grey', alpha=0.05)
                     ax1.plot(times, res.T[2], color='grey', alpha=0.05, linestyle = '--')
                     ax2.plot(times, res.T[0], color='grey', alpha=0.05)
             n = 0
             for par_i in pars_accept:
-                res = dde_model.simulate(list(par_i), times, fitting=False)
+                res = dde_model.simulate(list(par_i), times, fitting=False, reject=False)
                 if n == 0:
                     ax1.plot(times, res.T[1], label='Cortisol', color='blue', alpha=0.1)
                     ax1.plot(times, res.T[2], label='Cortisone', color='red', alpha=0.1)
@@ -177,7 +190,7 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
         else:
             if plot_rejected:
                 for par_i in pars_reject:
-                    res = dde_model.simulate(list(par_i), times, fitting=False)
+                    res = dde_model.simulate(list(par_i), times, fitting=False, reject=False)
                     if m_n == '3a':
                         F_tot = res.T[1]+res.T[3]
                         E_tot = res.T[2]+res.T[4]
@@ -191,7 +204,7 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
                     ax2.plot(times, res.T[0], color='grey', alpha=0.05)
             n = 0
             for par_i in pars_accept:
-                res = dde_model.simulate(list(par_i), times, fitting=False)
+                res = dde_model.simulate(list(par_i), times, fitting=False, reject=False)
                 if m_n == '3a':
                     F_tot = res.T[1]+res.T[3]
                     E_tot = res.T[2]+res.T[4]
@@ -220,7 +233,7 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
         axes = [ax1, ax2, ax3] 
         if plot_rejected:
             for par_i in pars_reject:
-                res = dde_model.simulate(list(par_i), times, fitting=False)
+                res = dde_model.simulate(list(par_i), times, fitting=False, reject=False)
                 F_tot = res.T[1]+res.T[3]
                 E_tot = res.T[2]+res.T[4]
                 ax1.plot(times, F_tot, color='grey', alpha=0.05)
@@ -232,7 +245,7 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
                 ax3.plot(times, res.T[0], color='grey', alpha=0.05)
         n = 0
         for par_i in pars_accept:
-            res = dde_model.simulate(list(par_i), times, fitting=False)
+            res = dde_model.simulate(list(par_i), times, fitting=False, reject=False)
             F_tot = res.T[1]+res.T[3]
             E_tot = res.T[2]+res.T[4]
             if n == 0:
