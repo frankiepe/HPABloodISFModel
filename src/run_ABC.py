@@ -128,9 +128,9 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, reps, days_to_keep=1):
     n_pars = len(init_pars)
     pars_all = np.empty((reps, n_pars), dtype=float)
     objs = np.empty(reps, dtype=float)
-
-    for i in np.arange(0,reps):
-        if i % 5000 == 0:
+    i = 0
+    while i < reps:
+        if i % 500 == 0:
             print(f"Iteration {i}/{reps}")
         par_i = np.asarray(bounds.sample(1)[0], dtype=float) # sample
         with warnings.catch_warnings(record=True) as caught_warnings:
@@ -141,9 +141,10 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, reps, days_to_keep=1):
             if len(caught_warnings) > 0:
                 print(f"{par_i} produced warning(s)")
                 print(f"Correponds to objective of: {obj_i}")
-
-        pars_all[i] = par_i
-        objs[i] = obj_i
+        if obj_i < 1e6:
+            pars_all[i] = par_i
+            objs[i] = obj_i
+            i+=1
 
     o_arr = objs
     p_arr = pars_all
