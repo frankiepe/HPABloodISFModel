@@ -312,10 +312,12 @@ class HPAModelFEInter(pints.ForwardModel):
         if (self.reject == True) and (reject == True):
             if fitting:
                 prop_day = (times[-1]-times[0])/day_len
+                if (self.reject_parameter_combination(result, prop_day, times=times)):
+                    return np.full((len(result), np.shape(result)[1]), 5000)
             else:
                 prop_day = 1
-            if (self.reject_parameter_combination(result, prop_day)):
-                return np.full((len(result), np.shape(result)[1]), 5000)
+                if (self.reject_parameter_combination(result, prop_day, times=self.times_fitting)):
+                    return np.full((len(result), np.shape(result)[1]), 5000)
 
         return result
 
@@ -344,16 +346,20 @@ class HPAModelFEInter(pints.ForwardModel):
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
-    def reject_parameter_combination(self, result, prop_day):
-        for i in range(result.shape[1]-1):
-            signals, _ = scipy_signal.find_peaks(result[:, i])
-            number_of_signals = len(signals)
-
-            lower_bound, upper_bound = self.signal_range
-
-            if not (int(prop_day*lower_bound) <= number_of_signals <= int(prop_day*upper_bound)): 
-                return True
-        
+    # Or if time between peaks is less than 1hr or greater than 8hrs
+    def reject_parameter_combination(self, result, prop_day, times):
+        lower_bound, upper_bound = self.signal_range
+        signals_ACTH, _ = scipy_signal.find_peaks(result[:, 0])
+        signals_CORT, _ = scipy_signal.find_peaks(result[:, 1])
+        signal_times = times[signals_CORT]
+        if len(signal_times)>0:
+            period_CORT = np.append(np.diff(signal_times), day_len-signal_times[-1]+signal_times[0])
+        if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
+            return True
+        elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
+            return True
+        elif min(period_CORT) < 60 or max(period_CORT) > 480:
+            return True
         return False
 
 class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
