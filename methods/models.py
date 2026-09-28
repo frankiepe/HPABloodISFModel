@@ -272,12 +272,12 @@ class HPAModelFEInter(pints.ForwardModel):
         gamma_e = par_dict['gamma_e'] # Cortisone degradation rate (new param)
         K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
         K_f_tot = par_dict['K_f_tot'] # Cortisol receptor half-saturation constant
-        K_mf = par_dict['K_mf'] # Cortisol conc. when F->E reaction rate is half V_f (new param)
-        K_me = par_dict['K_me'] # Cortisone conc. when E->F reaction rate is half V_e (new param)
+        K_mf_tot = par_dict['K_mf_tot'] # Cortisol conc. when F->E reaction rate is half V_f (new param)
+        K_me_tot = par_dict['K_me_tot'] # Cortisone conc. when E->F reaction rate is half V_e (new param)
         m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
         m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
-        V_f = par_dict['V_f'] # Max. cortisol to cortisone rate (new param)
-        V_e = par_dict['V_e'] # Max. cortisone to cortisol rate (new param)
+        V_f_tot = par_dict['V_f_tot'] # Max. cortisol to cortisone rate (new param)
+        V_e_tot = par_dict['V_e_tot'] # Max. cortisone to cortisol rate (new param)
         tau = par_dict['tau'] # Feedback delay from CORT to ACTH
         alpha = par_dict['alpha'] # Maximal rate of ACTH-induced CORT production
 
@@ -288,8 +288,8 @@ class HPAModelFEInter(pints.ForwardModel):
         sigma = par_dict['sigma'] # Asymmetry of circadian drive
 
         lags = [tau]
-        p = (gamma_a, gamma_f, gamma_e, K_a, K_f_tot, K_mf, K_me, m_a, m_f, 
-             V_f, V_e, tau, alpha, lambda_a, lambda_s, t_s, sigma)
+        p = (gamma_a, gamma_f, gamma_e, K_a, K_f_tot, K_mf_tot, K_me_tot, m_a, m_f, 
+             V_f_tot, V_e_tot, tau, alpha, lambda_a, lambda_s, t_s, sigma)
         
         # Define DDE problem and solve
         try:
