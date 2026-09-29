@@ -140,7 +140,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, reps, days_to_keep=1):
                 print(f"{par_i} produced warning(s)")
                 print(f"Correponds to objective of: {obj_i}")
         if obj_i < 1e6:
-            if i % 5000 == 0:
+            if i % 500 == 0:
                 print(f"Iteration {i}/{reps}")
             pars_all[i] = par_i
             objs[i] = obj_i
