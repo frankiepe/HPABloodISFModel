@@ -1108,6 +1108,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
     def reject_parameter_combination(self, result, prop_day, times):
         lower_bound, upper_bound = self.signal_range
         total_CORT = result[:, 1]+result[:, 3]
+        total_cortisone = result[:, 2]+result[:, 4]
         signals_ACTH, _ = scipy_signal.find_peaks(result[:, 0])
         signals_CORT, _ = scipy_signal.find_peaks(total_CORT)
         signal_times = times[signals_CORT]
@@ -1117,7 +1118,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
             return True
         elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
             return True
-        elif (result[:, 1]/total_CORT).max() > 0.2:
+        elif (result[:, 1]/total_CORT).max() > 0.2 or (result[:, 2]/total_cortisone).max() > 0.4:
             return True
         elif min(period_CORT) < 60 or max(period_CORT) > 480:
             return True
