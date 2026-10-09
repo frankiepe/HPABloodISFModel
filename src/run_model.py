@@ -51,7 +51,7 @@ def run_model(m_n, step, warmup, days_to_keep=1):
     elif m_n == '5':
         model = models.HPAModelFEInterBothCBGAlbBloodISF
     elif m_n == '6':
-        model = models.HPAModelCRHSupp
+        model = models.HPAModelFEInterBothCBGAlbDiffBindBloodISF
 
     dde_model = model(parameters=pars, fixed_pars={}, init_conds=ics, times=times, 
                       num_days=num_days, days_to_keep=days_to_keep, step=step)

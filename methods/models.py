@@ -3,6 +3,7 @@ import pints
 from ddeint import ddeint
 import numpy as np
 from . import day_len, PARAMETER_BOUNDARIES
+from .boundaries import Model6Boundaries
 from scipy import signal as scipy_signal
 from juliacall import Main as jl
 from juliacall import JuliaError
@@ -1100,6 +1101,206 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
             upperbounds.append(upperbound)
         
         return pints.RectangularBoundaries(lowerbounds, upperbounds)
+
+    ## Function to reject parameter combination if number of peaks are outside a plausible range
+    # Or if the ratio of free cortisol to total cortisol exceeds 0.2
+    # Or if the min time between peaks is less than 1hr
+    # Or if the max time between peaks is more than 8hrs
+    def reject_parameter_combination(self, result, prop_day, times):
+        lower_bound, upper_bound = self.signal_range
+        total_CORT = result[:, 1]+result[:, 3]
+        total_cortisone = result[:, 2]+result[:, 4]
+        signals_ACTH, _ = scipy_signal.find_peaks(result[:, 0])
+        signals_CORT, _ = scipy_signal.find_peaks(total_CORT)
+        signal_times = times[signals_CORT]
+        if len(signal_times)>0:
+            period_CORT = np.append(np.diff(signal_times), day_len-signal_times[-1]+signal_times[0])
+        if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
+            return True
+        elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
+            return True
+        elif (result[:, 1]/total_CORT).max() > 0.2 or (result[:, 2]/total_cortisone).max() > 0.4:
+            return True
+        elif min(period_CORT) < 60 or max(period_CORT) > 480:
+            return True
+        return False
+
+class HPAModelFEInterBothCBGAlbDiffBindBloodISF(pints.ForwardModel):
+    def __init__(self,
+                    parameters,
+                    fixed_pars,
+                    init_conds,
+                    times,
+                    signal_range = (5,14),
+                    num_days=6,
+                    days_to_keep=1,
+                    step=0.1,
+                    reject=True,
+                    reltol=1e-6,
+                    abstol=1e-6):
+        self.num_days = num_days
+        self.days_to_keep = days_to_keep
+        self.step = step
+        self.signal_range = signal_range
+        self.reject = reject
+        self.n_parameters_value = len(parameters)
+        self.parameters = parameters
+        self.param_keys = list(self.parameters.keys())
+        self.fixed_pars = fixed_pars
+        self.all_pars = list(parameters.keys()) + list(fixed_pars.keys())
+        self.init_conds = init_conds
+        self.times = times
+        self.tspan = (0.0, day_len*num_days)
+        self.length_model = day_len
+        self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+        self.alg = DDE.MethodOfSteps(DiffEq.Rosenbrock23())
+        self.model = HPADDEModels.HPAModelFEInterBothCBGAlbDiffBindBloodISF
+        self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
+        self.times_fitting = self.times[self.truncate_idx:] - self.times[self.truncate_idx]
+        self.reltol = reltol
+        self.abstol = abstol
+        p = jl.seval(f"ntuple(i -> 1, {len(self.all_pars)})")
+        A_0 = self.init_conds['A']
+        F_B_0 = self.init_conds['F_B']
+        E_B_0 = self.init_conds['E_B']
+        F_bound_0 = self.init_conds['F_bound']
+        E_bound_0 = self.init_conds['E_bound']
+        F_I_0 = self.init_conds['F_I']
+        E_I_0 = self.init_conds['E_I']
+        self.u0 = jl.collect(np.array([A_0, F_B_0, E_B_0, F_bound_0, E_bound_0, F_I_0, E_I_0], dtype=np.float64))
+        jl.seval(f"h(p, t) = [{A_0}, {F_B_0}, {E_B_0}, {F_bound_0}, {E_bound_0}, {F_I_0}, {E_I_0}]")
+        self.h = jl.h
+        self.base_prob = DDE.DDEProblem(self.model, self.u0, self.h, self.tspan, p, constant_lags = [1], saveat = self.times)
+
+    def crh(self, t, t_s=None, lambda_a=None, lambda_s=None, sigma=None, T_c=day_len, symmetric=False):
+        if symmetric:
+            return 70*math.cos(2*math.pi*(t/T_c)) + 75
+
+        def _resolve(name, value):
+            if value is not None:
+                return value
+            if name in self.parameters:
+                return self.parameters[name]
+            if name in self.fixed_pars:
+                return self.fixed_pars[name]
+            raise KeyError(f"CRH parameter '{name}' is missing")
+
+        t_s = _resolve('t_s', t_s)
+        lambda_a = _resolve('lambda_a', lambda_a)
+        lambda_s = _resolve('lambda_s', lambda_s)
+        sigma = _resolve('sigma', sigma)
+
+        return lambda_a * math.exp(
+            lambda_s * math.cos(2*math.pi * ((t - t_s) / T_c)
+                                + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
+        )
+
+    def simulate(self, parameters, times, fitting=True, reject=True):
+        
+        # Assign parameters
+        for i, key in enumerate(self.param_keys):
+            self.parameters[key] = parameters[i]
+
+        par_dict = {}
+        for par in self.all_pars:
+            if par in self.parameters:
+                par_dict[par] = self.parameters[par]
+            elif par in self.fixed_pars:
+                par_dict[par] = self.fixed_pars[par]
+
+        # HPC parameters
+        gamma_a = par_dict['gamma_a'] # ACTH degradation rate
+        gamma_f_b = par_dict['gamma_f_b'] # Cortisol degradation rate in BP
+        gamma_f_i = par_dict['gamma_f_i'] # Cortisol degradation rate in ISF
+        gamma_e_b = par_dict['gamma_e_b'] # Cortisone degradation rate in BP
+        gamma_e_i = par_dict['gamma_e_i'] # Cortisone degradation rate in ISF
+        K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
+        K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
+        K_mfB = par_dict['K_mfB'] # Cortisol conc. when F->E reaction rate is half V_f_b in BP
+        K_meB = par_dict['K_meB'] # Cortisone conc. when E->F reaction rate is half V_e_b in BP
+        K_mfI = par_dict['K_mfI'] # Cortisol conc. when F->E reaction rate is half V_f_i in ISF
+        K_meI = par_dict['K_meI'] # Cortisone conc. when E->F reaction rate is half V_e_i in ISF
+        k_Fon = par_dict['k_Fon'] # F protein on-binding rate
+        k_Foff = par_dict['k_Foff'] # F protein off-binding rate
+        k_Eon = par_dict['k_Eon'] # E protein on-binding rate
+        k_Eoff = par_dict['k_Eoff'] # E protein off-binding rate
+        P_tot = par_dict['P_tot'] # Total protein concentration (new param)
+        k_BI_F = par_dict['k_BI_F'] # Cortisiol permeability constant
+        k_BI_E = par_dict['k_BI_E'] # Cortisone permeability constant
+        m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
+        m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
+        V_f_b = par_dict['V_f_b'] # Max. cortisol to cortisone rate in BP
+        V_e_b = par_dict['V_e_b'] # Max. cortisone to cortisol rate in BP
+        V_f_i = par_dict['V_f_i'] # Max. cortisol to cortisone rate in ISF
+        V_e_i = par_dict['V_e_i'] # Max. cortisone to cortisol rate in ISF
+        V_B = par_dict['V_B'] # Vascular distribution volume
+        V_I = par_dict['V_I'] # ISF distribution volume
+        tau = par_dict['tau'] # Feedback delay from CORT to ACTH
+        alpha = par_dict['alpha'] # Maximal rate of ACTH-induced CORT production
+
+        # CRH parameters
+        lambda_a = par_dict['lambda_a'] # Baseline amplitude of CRH drive
+        lambda_s = par_dict['lambda_s'] # Circadian modulation strength
+        t_s = par_dict['t_s'] # Circadian phase shift
+        sigma = par_dict['sigma'] # Asymmetry of circadian drive
+
+        lags = [tau]
+        p = (gamma_a, gamma_f_b, gamma_f_i, gamma_e_b, gamma_e_i, K_a, K_f, K_mfB, 
+             K_meB, K_mfI, K_meI, k_Fon, k_Foff, k_Eon, k_Eoff, P_tot, k_BI_F, k_BI_E, m_a, m_f, V_f_b,
+             V_e_b, V_f_i, V_e_i, V_B, V_I, tau, alpha, lambda_a, lambda_s, t_s, sigma)
+        
+        # Define DDE problem and solve
+        try:
+            result = jl.solve_dde_fast(
+                self.base_prob, p, lags, self.alg,
+                self.reltol, self.abstol, self.truncate_idx + 1
+            )
+        except JuliaError:
+            result = np.full((len(self.times) - self.truncate_idx, len(self.init_conds)), 5000)
+        result = np.asarray(result)
+
+        if fitting:
+            # Find nearest indices
+            indices = np.searchsorted(self.times_fitting, times)
+
+            # Pull the filtered values
+            filtered_output = result[indices]
+            result = filtered_output
+
+        if (self.reject == True) and (reject == True):
+            if fitting:
+                prop_day = (times[-1]-times[0])/day_len
+                if (self.reject_parameter_combination(result, prop_day, times=times)):
+                    return np.full((len(result), np.shape(result)[1]), 5000)
+            else:
+                prop_day = 1
+                if (self.reject_parameter_combination(result, prop_day, times=self.times_fitting)):
+                    return np.full((len(result), np.shape(result)[1]), 5000)
+        return result
+
+    def n_outputs(self):
+        return 7
+
+    def n_times(self):
+        return self.length_model*self.num_days
+
+    def n_parameters(self):
+        return self.n_parameters_value
+
+    def get_and_create_boundaries(self):
+        lowerbounds = []
+        upperbounds = []
+
+        for item in self.parameters.keys():
+            lowerbound, upperbound = self.parameter_boundaries.get(item, (None, None))
+            if lowerbound is None or upperbound is None: 
+                print(f'{item} has no defined bounds. Setting to default (0, 1000)')
+                lowerbound, upperbound = (0, 1000)
+            
+            lowerbounds.append(lowerbound)
+            upperbounds.append(upperbound)
+        
+        return Model6Boundaries(lowerbounds, upperbounds)
 
     ## Function to reject parameter combination if number of peaks are outside a plausible range
     # Or if the ratio of free cortisol to total cortisol exceeds 0.2

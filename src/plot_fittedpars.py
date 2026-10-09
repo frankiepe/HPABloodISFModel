@@ -9,6 +9,7 @@ import re
 import argparse
 from methods import model_dict
 import seaborn as sns
+from methods import PARAMETER_BOUNDARIES as pb
 
 parser = argparse.ArgumentParser(description='Fit models to data.')
 parser.add_argument('-m', '--model', type = str, help='Select model for optimisation: ' \
@@ -45,13 +46,17 @@ def plot_pars(m_n, num_inds, reps, outdir):
     if m_n == '4':
         fig, axes = plt.subplots(4, 7, figsize=(14, 10))
     if m_n == '5':
-        fig, axes = plt.subplots(5, 6, figsize=(14, 10))
+        fig, axes = plt.subplots(4, 8, figsize=(14, 10))
     if m_n == '6':
-        fig, axes = plt.subplots(4, 4, figsize=(14, 10))
+        fig, axes = plt.subplots(4, 8, figsize=(14, 10))
     axes = axes.flatten()
 
     for i, param in enumerate(fitted_pars):
-        sns.violinplot(x=df[param], ax=axes[i], color='skyblue', inner='quart', orient='h')
+        sns.violinplot(x=df[param], ax=axes[i], color='skyblue', inner='point', orient='h')
+        lb = pb[param][0]
+        ub = pb[param][1]
+        axes[i].axvline(lb)
+        axes[i].axvline(ub)
         axes[i].set_title(param)
         axes[i].set_ylabel('')
 

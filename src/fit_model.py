@@ -81,14 +81,15 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
         m_wrap1 = mc.ModelBloodFEInterCBGAlbSimple
         m_wrap2 = mc.ModelISFFEInterCBGAlb
     elif m_n == '6':
-        model = models.HPAModelCRHSupp
-        m_wrap = mc.ModelBlood
+        model = models.HPAModelFEInterBothCBGAlbDiffBindBloodISF
+        m_wrap1 = mc.ModelBloodFEInterCBGAlbSimple
+        m_wrap2 = mc.ModelISFFEInterCBGAlb
 
     # Define model
     dde_model = model(parameters=init_pars, fixed_pars=fixed_pars, init_conds=ics, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
 
     # Wrap in blood or ISF model for fitting
-    if m_n in ['1','2','3a','3b','6']:
+    if m_n in ['1','2','3a','3b']:
         full_model = m_wrap(dde_model, init_pars, times)
     else:
         full_model1 = m_wrap1(dde_model, init_pars, times)
@@ -111,7 +112,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
         timesBP = timesBP+startBP-startISF
 
     # Define Pints problem for optimisation
-    if m_n in ['1','6']:
+    if m_n in ['1']:
         problem = pints.MultiOutputProblem(full_model, timesBP, np.array([ACTH, CORT]).T)
         f = pints.MeanSquaredError(problem, weights=[np.mean(CORT)/np.mean(ACTH), 1]) # weighting to account for difference in scale between ACTH and CORT
     elif m_n in ['2','3a','3b']:
@@ -133,9 +134,9 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
     print(f'q0 start: {q0}')
     print(f'eval q0 start: {f(q0)}')
     minobj = f(q0)
-    for i in range(10000):
-        if i % 1000 == 0:
-            print(f'Initial sampling, iteration {i} of 10000')
+    for i in range(2000):
+        if i % 100 == 0:
+            print(f'Initial sampling, iteration {i} of 2000')
         q1 = bounds.sample()
         evalobj = f(list(q1[0]))
         if evalobj < minobj:
@@ -145,10 +146,21 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
     print(f'q0 end: {q0}')
     print(f'eval q0 end: {f(q0)}')
 
+    if m_n == '6':
+        transform = pints.ComposedTransformation(
+                        pints.IdentityTransformation(11),
+                        pints.LogTransformation(4),
+                        pints.IdentityTransformation(17),
+                    )
+    else:
+        transform = pints.ComposedTransformation(
+                        pints.IdentityTransformation(len(init_pars)),
+                    )
+
     # Define Pints optimiser
     opt = pints.OptimisationController(
-            f, q0, boundaries=bounds, method=pints.CMAES)
-    opt.set_max_iterations(20000)
+            f, q0, boundaries=bounds, transformation=transform, method=pints.CMAES)
+    opt.set_max_iterations(2000)
     opt.set_log_interval(iters=50, warm_up=5)
     opt.set_function_tolerance(iterations=1000, threshold=1e-3)
 
