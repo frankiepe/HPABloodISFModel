@@ -56,7 +56,7 @@ class Model6Boundaries(pints.Boundaries):
             unf = lambda x: np.exp(x)
             p = np.zeros(self._n_parameters)
             for i in range(self._n_parameters):
-                if i in [11,12,13,14]:
+                if i in [11,13]:
                     p[i] = unf(np.random.uniform(f(self._lower[i]), f(self._upper[i])))
                 else:
                     p[i] = np.random.uniform(self._lower[i], self._upper[i])
