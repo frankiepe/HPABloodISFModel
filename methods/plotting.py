@@ -10,7 +10,7 @@ import os
 from . import day_len, model_dict
 
 def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filename='model_output', days_to_keep=1, plot_data=False, d_n=1):
-    if m_n in ['1', '2', '3a', '3b']:
+    if m_n in ['1', '2']:
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
         axes = [ax1, ax2]
         if m_n == '1':
@@ -24,23 +24,26 @@ def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filenam
             ax2.plot(times, res.T[0], label='ACTH', color='orange')
             ax1.set_title('Cortisol and Cortisone in Blood Plasma')
             ax2.set_title('ACTH in Blood Plasma')
-        else:
-            if m_n == '3a':
-                F_tot = res.T[1]+res.T[3]
-                E_tot = res.T[2]+res.T[4]
-            elif m_n == '3b':
-                F_tot = res.T[1]+res.T[3]+res.T[4]
-                E_tot = res.T[2]+res.T[5]+res.T[6]
-            ax1.plot(times, F_tot, label='Total Cortisol', color='blue')
-            ax1.plot(times, res.T[1], label='Free Cortisol', color='green')
-            ax1.plot(times, E_tot, label='Total Cortisone', color='red')
-            ax1.plot(times, res.T[2], label='Free Cortisone', color='yellow')
-            ax2.plot(times, res.T[0], label='ACTH', color='orange')
-            ax1.set_title('Cortisol and Cortisone in Blood Plasma')
-            ax2.set_title('ACTH in Blood Plasma')
         ax1.set_ylabel('nmol/L')
         ax2.set_ylabel('pmol/L')
         ax2.set_xlabel('Time (minutes)')
+    elif m_n in ['3a', '3b']:
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12))
+        axes = [ax1, ax2, ax3]
+        if m_n == '3a':
+            F_tot = res.T[1]+res.T[3]
+            E_tot = res.T[2]+res.T[4]
+        elif m_n == '3b':
+            F_tot = res.T[1]+res.T[3]+res.T[4]
+            E_tot = res.T[2]+res.T[5]+res.T[6]
+        ax1.plot(times, F_tot, label='Total Cortisol', color='blue')
+        ax1.plot(times, res.T[1], label='Free Cortisol', color='green')
+        ax2.plot(times, E_tot, label='Total Cortisone', color='red')
+        ax2.plot(times, res.T[2], label='Free Cortisone', color='yellow')
+        ax3.plot(times, res.T[0], label='ACTH', color='orange')
+        ax1.set_title('Cortisol in Blood Plasma')
+        ax2.set_title('Cortisone in Blood Plasma')
+        ax3.set_title('ACTH in Blood Plasma')
     else:
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(20, 8))
         axes = [ax1, ax2, ax3, ax4]
@@ -88,8 +91,8 @@ def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filenam
         elif m_n in ['3a','3b','4','5','6']:
             ax1.plot(timesBP, CORT, label='Total Cortisol data', color='blue', marker='o')
             if m_n in ['3a','3b']:
-                ax1.plot(timesBP, Cortisone, label='Total Cortisone data', color='red', marker='o')
-                ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
+                ax2.plot(timesBP, Cortisone, label='Total Cortisone data', color='red', marker='o')
+                ax3.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
             elif m_n in ['4', '5', '6']:
                 ax2.plot(timesBP, Cortisone, label='Total Cortisone data', color='red', marker='o')
                 ax3.plot(timesISF, mCORT, label='Free Cortisol data', color='blue', marker='o', alpha=0.5)

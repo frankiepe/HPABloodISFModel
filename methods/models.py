@@ -529,23 +529,31 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
 
     ## Function to reject parameter combination if number of peaks are outside a plausible range
     # Or if the ratio of free cortisol to total cortisol exceeds 0.2
+    # Or if the ratio of free cortisone to total cortisone exceeds 0.4
     # Or if the min time between peaks is less than 1hr
     # Or if the max time between peaks is more than 8hrs
     def reject_parameter_combination(self, result, prop_day, times):
         lower_bound, upper_bound = self.signal_range
         total_CORT = result[:, 1]+result[:, 3]
+        total_cortisone = result[:, 2]+result[:, 4]
         signals_ACTH, _ = scipy_signal.find_peaks(result[:, 0])
         signals_CORT, _ = scipy_signal.find_peaks(total_CORT)
-        signal_times = times[signals_CORT]
-        if len(signal_times)>0:
-            period_CORT = np.append(np.diff(signal_times), day_len-signal_times[-1]+signal_times[0])
+        signals_cortisone, _ = scipy_signal.find_peaks(total_cortisone)
+        signal_times_CORT = times[signals_CORT]
+        signal_times_cortisone = times[signals_cortisone]
+        if len(signal_times_CORT)>0:
+            period_CORT = np.append(np.diff(signal_times_CORT), day_len-signal_times_CORT[-1]+signal_times_CORT[0])
+        if len(signal_times_cortisone)>0:
+            period_cortisone = np.append(np.diff(signal_times_cortisone), day_len-signal_times_cortisone[-1]+signal_times_cortisone[0])
         if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
             return True
         elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
             return True
-        elif (result[:, 1]/total_CORT).max() > 0.2:
+        elif not (int(prop_day*lower_bound) <= len(signals_cortisone) <= int(prop_day*upper_bound)):
             return True
-        elif min(period_CORT) < 60 or max(period_CORT) > 480:
+        elif (result[:, 1]/total_CORT).max() > 0.2 or (result[:, 2]/total_cortisone).max() > 0.4:
+            return True
+        elif min(period_CORT) < 60 or max(period_CORT) > 480 or min(period_cortisone) < 60 or max(period_cortisone) > 480:
             return True
         return False
 
