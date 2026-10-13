@@ -431,7 +431,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
                                 + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
         )
 
-    def simulate(self, parameters, times, fitting=True, reject=True):
+    def simulate(self, parameters, times, fitting=True, reject=True, fail_flags=False):
         
         # Assign parameters
         for i, key in enumerate(self.param_keys):
@@ -452,10 +452,12 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
         K_mf = par_dict['K_mf'] # Cortisol conc. when F->E reaction rate is half V_f
         K_me = par_dict['K_me'] # Cortisone conc. when E->F reaction rate is half V_e
-        k_Fon = par_dict['k_Fon'] # F protein on-binding rate (new param)
-        k_Foff = par_dict['k_Foff'] # F protein off-binding rate (new param)
-        k_Eon = par_dict['k_Eon'] # E protein on-binding rate (new param)
-        k_Eoff = par_dict['k_Eoff'] # E protein off-binding rate (new param)
+        Kd_F = par_dict['Kd_F'] # Dissociation constant for F protein binding
+        Kd_E = par_dict['Kd_E'] # Dissociation constant for E protein binding
+        k_Fon = 6 # F protein on-binding rate
+        k_Foff = k_Fon*Kd_F # F protein off-binding rate
+        k_Eon = 6 # E protein on-binding rate
+        k_Eoff = k_Eon*Kd_E # E protein off-binding rate
         m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
         m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
         V_f = par_dict['V_f'] # Max. cortisol to cortisone rate
@@ -494,12 +496,18 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         if (self.reject == True) and (reject == True):
             if fitting:
                 prop_day = (times[-1]-times[0])/day_len
-                if (self.reject_parameter_combination(result, prop_day, times=times)):
-                    return np.full((len(result), np.shape(result)[1]), 5000)
+                if fail_flags:
+                    return self.reject_parameter_combination(result, prop_day, times=times, fail_flags=fail_flags)
+                else:
+                    if (self.reject_parameter_combination(result, prop_day, times=times)):
+                        return np.full((len(result), np.shape(result)[1]), 5000)
             else:
                 prop_day = 1
-                if (self.reject_parameter_combination(result, prop_day, times=self.times_fitting)):
-                    return np.full((len(result), np.shape(result)[1]), 5000)
+                if fail_flags:
+                    return self.reject_parameter_combination(result, prop_day, times=self.times_fitting, fail_flags=fail_flags)
+                else:
+                    if (self.reject_parameter_combination(result, prop_day, times=self.times_fitting, fail_flags=fail_flags)):
+                        return np.full((len(result), np.shape(result)[1]), 5000)
             
         return result
 
@@ -532,7 +540,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
     # Or if the ratio of free cortisone to total cortisone exceeds 0.4
     # Or if the min time between peaks is less than 1hr
     # Or if the max time between peaks is more than 8hrs
-    def reject_parameter_combination(self, result, prop_day, times):
+    def reject_parameter_combination(self, result, prop_day, times, fail_flags=False):
         lower_bound, upper_bound = self.signal_range
         total_CORT = result[:, 1]+result[:, 3]
         total_cortisone = result[:, 2]+result[:, 4]
@@ -545,6 +553,37 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
             period_CORT = np.append(np.diff(signal_times_CORT), day_len-signal_times_CORT[-1]+signal_times_CORT[0])
         if len(signal_times_cortisone)>0:
             period_cortisone = np.append(np.diff(signal_times_cortisone), day_len-signal_times_cortisone[-1]+signal_times_cortisone[0])
+        if fail_flags:
+            fail_flags_dict = {'CORT_peaks': False, 'ACTH_peaks': False, 'cortisone_peaks': False,
+                               'CORT_ratio': False, 'cortisone_ratio': False, 'CORT_period_min': False, 
+                               'CORT_period_max': False, 'cortisone_period_min': False, 'cortisone_period_max': False}
+            if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
+                fail_flags_dict['CORT_peaks'] = True
+            if not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
+                fail_flags_dict['ACTH_peaks'] = True
+            if not (int(prop_day*lower_bound) <= len(signals_cortisone) <= int(prop_day*upper_bound)):
+                fail_flags_dict['cortisone_peaks'] = True
+            if (result[:, 1]/total_CORT).max() > 0.2:
+                fail_flags_dict['CORT_ratio'] = True
+            if (result[:, 2]/total_cortisone).max() > 0.4:
+                fail_flags_dict['cortisone_ratio'] = True
+            if len(signal_times_CORT)>0:
+                if min(period_CORT) < 60:
+                    fail_flags_dict['CORT_period_min'] = True
+                if max(period_CORT) > 480:
+                    fail_flags_dict['CORT_period_max'] = True
+            else:
+                fail_flags_dict['CORT_period_min'] = True
+                fail_flags_dict['CORT_period_max'] = True
+            if len(signal_times_cortisone)>0:
+                if min(period_cortisone) < 60:
+                    fail_flags_dict['cortisone_period_min'] = True
+                if max(period_cortisone) > 480:
+                    fail_flags_dict['cortisone_period_max'] = True
+            else:
+                fail_flags_dict['cortisone_period_min'] = True
+                fail_flags_dict['cortisone_period_max'] = True
+            return fail_flags_dict
         if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
             return True
         elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
