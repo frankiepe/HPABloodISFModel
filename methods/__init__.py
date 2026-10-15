@@ -29,7 +29,7 @@ PARAMETER_BOUNDARIES = {
     'k_Foff': (1e-3, 5),
     'k_Eon': (5e-4, 6),
     'k_Eoff': (1e-3, 5),
-    'P_tot': (750, 2500),
+    'P_tot': (750, 2000),
     'k_1': (0, 2.5e-6),
     'k_2': (0, 1e-4),
     'k_3': (0, 2.5e-6),
@@ -59,7 +59,7 @@ PARAMETER_BOUNDARIES = {
     'tau_h': (1, 40),
     'alpha': (0.1, 100),
     'lambda_a': (0, 20),
-    'lambda_s': (0, 3.5),
+    'lambda_s': (0, 3),
     't_s': (-300, 150),
     'sigma': (0, 1)
 }
