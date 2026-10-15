@@ -3,7 +3,7 @@ import pints
 from ddeint import ddeint
 import numpy as np
 from . import day_len, PARAMETER_BOUNDARIES
-from .boundaries import Model6Boundaries
+from .boundaries import Model3aBoundaries, Model6Boundaries
 from scipy import signal as scipy_signal
 from juliacall import Main as jl
 from juliacall import JuliaError
@@ -391,7 +391,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
         self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
-        self.alg = DDE.MethodOfSteps(DiffEq.Tsit5())
+        self.alg = DDE.MethodOfSteps(DiffEq.Rosenbrock23())
         self.model = HPADDEModels.HPAModelFEInterCBGAlbSimple
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
         self.times_fitting = self.times[self.truncate_idx:] - self.times[self.truncate_idx]
@@ -452,12 +452,11 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
         K_mf = par_dict['K_mf'] # Cortisol conc. when F->E reaction rate is half V_f
         K_me = par_dict['K_me'] # Cortisone conc. when E->F reaction rate is half V_e
-        Kd_F = par_dict['Kd_F'] # Dissociation constant for F protein binding
-        Kd_E = par_dict['Kd_E'] # Dissociation constant for E protein binding
-        k_Fon = 6 # F protein on-binding rate
-        k_Foff = k_Fon*Kd_F # F protein off-binding rate
-        k_Eon = 6 # E protein on-binding rate
-        k_Eoff = k_Eon*Kd_E # E protein off-binding rate
+        k_Fon = par_dict['k_Fon'] # F protein on-binding rate
+        k_Foff = par_dict['k_Foff']# F protein off-binding rate
+        k_Eon = par_dict['k_Eon'] # E protein on-binding rate
+        k_Eoff = par_dict['k_Eoff'] # E protein off-binding rate
+        P_tot = par_dict['P_tot'] # Total protein concentration
         m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
         m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
         V_f = par_dict['V_f'] # Max. cortisol to cortisone rate
@@ -473,7 +472,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
 
         lags = [tau]
         p = (gamma_a, gamma_f, gamma_e, K_a, K_f, K_mf, K_me, k_Fon, k_Foff, k_Eon, 
-             k_Eoff, m_a, m_f, V_f, V_e, tau, alpha, lambda_a, lambda_s, t_s, sigma)
+             k_Eoff, P_tot, m_a, m_f, V_f, V_e, tau, alpha, lambda_a, lambda_s, t_s, sigma)
         
         # Define DDE problem and solve
         try:
@@ -533,7 +532,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
             lowerbounds.append(lowerbound)
             upperbounds.append(upperbound)
         
-        return pints.RectangularBoundaries(lowerbounds, upperbounds)
+        return Model3aBoundaries(lowerbounds, upperbounds)
 
     ## Function to reject parameter combination if number of peaks are outside a plausible range
     # Or if the ratio of free cortisol to total cortisol exceeds 0.2

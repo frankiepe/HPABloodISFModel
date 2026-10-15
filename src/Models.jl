@@ -26,14 +26,15 @@ function HPAModelFEInter(du, u, h, p, t)
 end
 
 function HPAModelFEInterCBGAlbSimple(du, u, h, p, t)
-    gamma_a, gamma_f, gamma_e, K_a, K_f, K_mf, K_me, k_Fon, k_Foff, k_Eon, k_Eoff, m_a, m_f, V_f, V_e, tau, alpha, lambda_a, lambda_s, t_s, sigma = p
+    gamma_a, gamma_f, gamma_e, K_a, K_f, K_mf, K_me, k_Fon, k_Foff, k_Eon, k_Eoff, P_total, m_a, m_f, V_f, V_e, tau, alpha, lambda_a, lambda_s, t_s, sigma = p
     F_delay = h(p, t - tau)[2]
     phi_t = crh(t, t_s, lambda_a, lambda_s, sigma)
+    P_free = P_total - u[4] - u[5]
     du[1] = -gamma_a * u[1] + ((K_f^m_a)*phi_t)/((K_f^m_a) + (F_delay^m_a))
-    du[2] = -(gamma_f + k_Fon) * u[2] + alpha*((u[1]^m_f)/((K_a^m_f) + (u[1]^m_f))) + k_Foff * u[4] + (V_e * u[3])/(K_me + u[3]) - (V_f + u[2])/(K_mf + u[2])
-    du[3] = -(gamma_e + k_Eon) * u[3] + k_Eoff * u[5] - (V_e*u[3])/(K_me+u[3]) + (V_f+u[2])/(K_mf+u[2])
-    du[4] = k_Fon * u[2] - k_Foff * u[4]
-    du[5] = k_Eon * u[3] - k_Eoff * u[5]
+    du[2] = -(gamma_f + k_Fon*P_free) * u[2] + alpha*((u[1]^m_f)/((K_a^m_f) + (u[1]^m_f))) + k_Foff * u[4] + (V_e * u[3])/(K_me + u[3]) - (V_f + u[2])/(K_mf + u[2])
+    du[3] = -(gamma_e + k_Eon*P_free) * u[3] + k_Eoff * u[5] - (V_e*u[3])/(K_me+u[3]) + (V_f+u[2])/(K_mf+u[2])
+    du[4] = k_Fon * P_free * u[2] - k_Foff * u[4]
+    du[5] = k_Eon * P_free * u[3] - k_Eoff * u[5]
 end
 
 function HPAModelFEInterCBGAlb(du, u, h, p, t)
