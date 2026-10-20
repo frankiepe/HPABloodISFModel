@@ -32,10 +32,10 @@ class BaseHPAModel(pints.ForwardModel):
                  signal_range = (5,14),
                  num_days=6,
                  days_to_keep=1,
-                 step=0.1,
+                 step=1,
                  reject=True,
-                 reltol=1e-6,
-                 abstol=1e-6):
+                 reltol=1e-4,
+                 abstol=1e-4):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step
@@ -50,7 +50,7 @@ class BaseHPAModel(pints.ForwardModel):
         self.times = times
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
-        self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+        self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()['1']
         self.alg = DDE.MethodOfSteps(DiffEq.Tsit5())
         self.model = HPADDEModels.BaseHPAModel
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
@@ -88,7 +88,7 @@ class BaseHPAModel(pints.ForwardModel):
                                 + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
         )
 
-    def simulate(self, parameters, times, fitting=True, reject=True):
+    def simulate(self, parameters, times, fitting=True, reject=True, fail_flags=False):
         # Assign parameters
         for i, key in enumerate(self.param_keys):
             self.parameters[key] = parameters[i]
@@ -139,12 +139,18 @@ class BaseHPAModel(pints.ForwardModel):
         if (self.reject == True) and (reject == True):
             if fitting:
                 prop_day = (times[-1]-times[0])/day_len
-                if (self.reject_parameter_combination(result, prop_day, times=times)):
-                    return np.full((len(result), np.shape(result)[1]), 5000)
+                if fail_flags:
+                    return self.reject_parameter_combination(result, prop_day, times=times, fail_flags=fail_flags)
+                else:
+                    if (self.reject_parameter_combination(result, prop_day, times=times)):
+                        return np.full((len(result), np.shape(result)[1]), 5000)
             else:
                 prop_day = 1
-                if (self.reject_parameter_combination(result, prop_day, times=self.times_fitting)):
-                    return np.full((len(result), np.shape(result)[1]), 5000)
+                if fail_flags:
+                    return self.reject_parameter_combination(result, prop_day, times=self.times_fitting, fail_flags=fail_flags)
+                else:
+                    if (self.reject_parameter_combination(result, prop_day, times=self.times_fitting, fail_flags=fail_flags)):
+                        return np.full((len(result), np.shape(result)[1]), 5000)
         
         return result
 
@@ -174,13 +180,29 @@ class BaseHPAModel(pints.ForwardModel):
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
     # Or if time between peaks is less than 1hr or greater than 8hrs
-    def reject_parameter_combination(self, result, prop_day, times):
+    def reject_parameter_combination(self, result, prop_day, times, fail_flags=False):
         lower_bound, upper_bound = self.signal_range
         signals_ACTH, _ = scipy_signal.find_peaks(result[:, 0])
         signals_CORT, _ = scipy_signal.find_peaks(result[:, 1])
         signal_times = times[signals_CORT]
         if len(signal_times)>0:
             period_CORT = np.append(np.diff(signal_times), day_len-signal_times[-1]+signal_times[0])
+        if fail_flags:
+            fail_flags_dict = {'CORT_peaks': False, 'ACTH_peaks': False, 
+                               'CORT_period_min': False, 'CORT_period_max': False}
+            if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
+                fail_flags_dict['CORT_peaks'] = True
+            if not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
+                fail_flags_dict['ACTH_peaks'] = True
+            if len(signal_times)>0:
+                if min(period_CORT) < 60:
+                    fail_flags_dict['CORT_period_min'] = True
+                if max(period_CORT) > 480:
+                    fail_flags_dict['CORT_period_max'] = True
+            else:
+                fail_flags_dict['CORT_period_min'] = True
+                fail_flags_dict['CORT_period_max'] = True
+            return fail_flags_dict
         if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
             return True
         elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
@@ -198,10 +220,10 @@ class HPAModelFEInter(pints.ForwardModel):
                  signal_range = (5,14),
                  num_days=6,
                  days_to_keep=1,
-                 step=0.1,
+                 step=1,
                  reject=True,
-                 reltol=1e-6,
-                 abstol=1e-6):
+                 reltol=1e-4,
+                 abstol=1e-4):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step
@@ -372,10 +394,10 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
                     signal_range = (5,14),
                     num_days=6,
                     days_to_keep=1,
-                    step=0.1,
+                    step=1,
                     reject=True,
-                    reltol=1e-6,
-                    abstol=1e-6):
+                    reltol=1e-4,
+                    abstol=1e-4):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step
@@ -604,10 +626,10 @@ class HPAModelFEInterCBGAlb(pints.ForwardModel):
                     signal_range = (5,14),
                     num_days=6,
                     days_to_keep=1,
-                    step=0.1,
+                    step=1,
                     reject=True,
-                    reltol=1e-6,
-                    abstol=1e-6):
+                    reltol=1e-4,
+                    abstol=1e-4):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step
@@ -788,10 +810,10 @@ class HPAModelFEInterCBGAlbBloodISF(pints.ForwardModel):
                     signal_range = (5,14),
                     num_days=6,
                     days_to_keep=1,
-                    step=0.1,
+                    step=1,
                     reject=True,
-                    reltol=1e-6,
-                    abstol=1e-6):
+                    reltol=1e-4,
+                    abstol=1e-4):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step
@@ -981,10 +1003,10 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
                     signal_range = (5,14),
                     num_days=6,
                     days_to_keep=1,
-                    step=0.1,
+                    step=1,
                     reject=True,
-                    reltol=1e-6,
-                    abstol=1e-6):
+                    reltol=1e-4,
+                    abstol=1e-4):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
         self.step = step

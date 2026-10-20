@@ -116,9 +116,9 @@ def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filenam
     plt.savefig(f'{savedir}/{filename}.png')
     plt.close(fig)
 
-def plot_parameter_histograms(param_values, param_name, hist_file, thresh, bins=20, plot_best_fit=False, df=None):
-    lb = pb[param_name][0]
-    ub = pb[param_name][1]
+def plot_parameter_histograms(param_values, param_name, hist_file, thresh, model, bins=20, plot_best_fit=False, df=None):
+    lb = pb[model][param_name][0]
+    ub = pb[model][param_name][1]
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.axhline(1/(ub-lb), color = 'black', alpha = 0.5)
     kde = stats.gaussian_kde(param_values)
@@ -130,10 +130,18 @@ def plot_parameter_histograms(param_values, param_name, hist_file, thresh, bins=
     ax.set_xlim(lb, ub)
     ax.fill_between(xr, 0, 1/(ub-lb), color='tab:blue', alpha=0.4, label='Prior dist.')
     ax.axvline(0.5*(ub-lb)+lb, color='tab:blue', alpha = 0.4, linestyle='--', label='Prior mean/median')
-    ax.hist(param_values, bins=bins, edgecolor='black', density=True, color="grey", alpha=0.1, label='Histogram')
+    if param_name in ['k_Fon', 'k_Foff', 'k_Eon', 'k_Eoff']:
+        _, bins, _ = ax.hist(param_values, bins=bins, density=True, color="grey", alpha=0.0001)
+        logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
+        ax.hist(param_values, bins=logbins, edgecolor='black', density=True, color="grey", alpha=0.1, label='Histogram')
+        ax.set_xscale('log')
+    else:
+        ax.hist(param_values, bins=bins, edgecolor='black', density=True, color="grey", alpha=0.1, label='Histogram')
     ax.fill_between(xr, 0, kde(xr), color='tab:orange', alpha=0.4, label='Posterior')
     ax.axvline(np.mean(param_values), color='tab:orange', alpha = 0.4, linestyle='--', label='Posterior mean')
     ax.axvline(np.median(param_values), color='tab:orange', alpha = 0.4, linestyle='-.', label='Posterior median')
+    ax.axvline(np.max(param_values), color='tab:red', alpha = 0.4, linestyle='--', label='Max accept')
+    ax.axvline(np.min(param_values), color='tab:red', alpha = 0.4, linestyle='-.', label='Min accept')
     if plot_best_fit and df is not None:
         i = 0
         for best_fit in df[param_name]:
@@ -311,6 +319,7 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
             ax3.plot(timesISF, mCORT, label='Free Cortisol data', color='blue', marker='o')
             ax3.plot(timesISF, mCortisone, label='Free Cortisone data', color='red', marker='o')
             ax4.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
+            ax3.set_ylim(0, 30)
     for ax in axes:
         ax.set_xlim(list(times)[0], list(times)[-1])
         for i in range(days_to_keep):
@@ -318,7 +327,6 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
         ax.legend()
 
     ax1.set_ylim(0, 500)
-    ax3.set_ylim(0, 30)
     plt.suptitle('Corticosteroid and ACTH Levels Over Time')
     plt.savefig(m_traj_file)
     plt.close(fig)

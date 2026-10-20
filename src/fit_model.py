@@ -21,7 +21,7 @@ parser.add_argument('-m', '--model', type = str, help='Select model for optimisa
                     '6: HPAModelCRHSupp')
 parser.add_argument('-i', '--ind', type = int, help='Select data index')
 parser.add_argument('-w', '--warmup', type = int, default=5, help='No. of days of warmup (to reach steady state)')
-parser.add_argument('-s', '--step', type=float, default=0.1, help='Step size for dde solver (must be sufficiently small for convergence)')
+parser.add_argument('-s', '--step', type=float, default=1, help='Step size for dde solver (must be sufficiently small for convergence)')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
 parser.add_argument('-f', '--fixed', type=str, nargs='*', help='Parameters to fix (i.e. not fit)')
 parser.add_argument('-r', '--seed', type=int, default=1, help='Random seed for fitting')
