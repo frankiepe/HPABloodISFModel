@@ -238,7 +238,7 @@ class HPAModelFEInter(pints.ForwardModel):
         self.times = times
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
-        self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+        self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()['2']
         self.alg = DDE.MethodOfSteps(DiffEq.Tsit5())
         self.model = HPADDEModels.HPAModelFEInter
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
@@ -277,7 +277,7 @@ class HPAModelFEInter(pints.ForwardModel):
                                 + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
         )
 
-    def simulate(self, parameters, times, fitting=True, reject=True):
+    def simulate(self, parameters, times, fitting=True, reject=True, fail_flags=False):
         # Assign parameters
         for i, key in enumerate(self.param_keys):
             self.parameters[key] = parameters[i]
@@ -294,13 +294,13 @@ class HPAModelFEInter(pints.ForwardModel):
         gamma_f = par_dict['gamma_f'] # Cortisol degradation rate
         gamma_e = par_dict['gamma_e'] # Cortisone degradation rate (new param)
         K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
-        K_f_tot = par_dict['K_f_tot'] # Cortisol receptor half-saturation constant
-        K_mf_tot = par_dict['K_mf_tot'] # Cortisol conc. when F->E reaction rate is half V_f (new param)
-        K_me_tot = par_dict['K_me_tot'] # Cortisone conc. when E->F reaction rate is half V_e (new param)
+        K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
+        K_mf = par_dict['K_mf'] # Cortisol conc. when F->E reaction rate is half V_f (new param)
+        K_me = par_dict['K_me'] # Cortisone conc. when E->F reaction rate is half V_e (new param)
         m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
         m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
-        V_f_tot = par_dict['V_f_tot'] # Max. cortisol to cortisone rate (new param)
-        V_e_tot = par_dict['V_e_tot'] # Max. cortisone to cortisol rate (new param)
+        V_f = par_dict['V_f'] # Max. cortisol to cortisone rate (new param)
+        V_e = par_dict['V_e'] # Max. cortisone to cortisol rate (new param)
         tau = par_dict['tau'] # Feedback delay from CORT to ACTH
         alpha = par_dict['alpha'] # Maximal rate of ACTH-induced CORT production
 
@@ -311,8 +311,8 @@ class HPAModelFEInter(pints.ForwardModel):
         sigma = par_dict['sigma'] # Asymmetry of circadian drive
 
         lags = [tau]
-        p = (gamma_a, gamma_f, gamma_e, K_a, K_f_tot, K_mf_tot, K_me_tot, m_a, m_f, 
-             V_f_tot, V_e_tot, tau, alpha, lambda_a, lambda_s, t_s, sigma)
+        p = (gamma_a, gamma_f, gamma_e, K_a, K_f, K_mf, K_me, m_a, m_f, 
+             V_f, V_e, tau, alpha, lambda_a, lambda_s, t_s, sigma)
         
         # Define DDE problem and solve
         try:
@@ -335,12 +335,18 @@ class HPAModelFEInter(pints.ForwardModel):
         if (self.reject == True) and (reject == True):
             if fitting:
                 prop_day = (times[-1]-times[0])/day_len
-                if (self.reject_parameter_combination(result, prop_day, times=times)):
-                    return np.full((len(result), np.shape(result)[1]), 5000)
+                if fail_flags:
+                    return self.reject_parameter_combination(result, prop_day, times=times, fail_flags=fail_flags)
+                else:
+                    if (self.reject_parameter_combination(result, prop_day, times=times)):
+                        return np.full((len(result), np.shape(result)[1]), 5000)
             else:
                 prop_day = 1
-                if (self.reject_parameter_combination(result, prop_day, times=self.times_fitting)):
-                    return np.full((len(result), np.shape(result)[1]), 5000)
+                if fail_flags:
+                    return self.reject_parameter_combination(result, prop_day, times=self.times_fitting, fail_flags=fail_flags)
+                else:
+                    if (self.reject_parameter_combination(result, prop_day, times=self.times_fitting, fail_flags=fail_flags)):
+                        return np.full((len(result), np.shape(result)[1]), 5000)
 
         return result
 
@@ -370,13 +376,29 @@ class HPAModelFEInter(pints.ForwardModel):
 
     # Function to reject parameter combination if number of peaks are outside a plausible range
     # Or if time between peaks is less than 1hr or greater than 8hrs
-    def reject_parameter_combination(self, result, prop_day, times):
+    def reject_parameter_combination(self, result, prop_day, times, fail_flags=False):
         lower_bound, upper_bound = self.signal_range
         signals_ACTH, _ = scipy_signal.find_peaks(result[:, 0])
         signals_CORT, _ = scipy_signal.find_peaks(result[:, 1])
         signal_times = times[signals_CORT]
         if len(signal_times)>0:
             period_CORT = np.append(np.diff(signal_times), day_len-signal_times[-1]+signal_times[0])
+        if fail_flags:
+            fail_flags_dict = {'CORT_peaks': False, 'ACTH_peaks': False, 
+                                'CORT_period_min': False, 'CORT_period_max': False}
+            if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
+                fail_flags_dict['CORT_peaks'] = True
+            if not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
+                fail_flags_dict['ACTH_peaks'] = True
+            if len(signal_times)>0:
+                if min(period_CORT) < 60:
+                    fail_flags_dict['CORT_period_min'] = True
+                if max(period_CORT) > 480:
+                    fail_flags_dict['CORT_period_max'] = True
+            else:
+                fail_flags_dict['CORT_period_min'] = True
+                fail_flags_dict['CORT_period_max'] = True
+            return fail_flags_dict
         if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
             return True
         elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):

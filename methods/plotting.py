@@ -10,23 +10,29 @@ import os
 from . import day_len, model_dict
 
 def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filename='model_output', days_to_keep=1, plot_data=False, d_n=1):
-    if m_n in ['1', '2']:
+    if m_n == '1':
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
         axes = [ax1, ax2]
-        if m_n == '1':
-            ax1.plot(times, res.T[1], label='Cortisol', color='blue')
-            ax2.plot(times, res.T[0], label='ACTH', color='orange')
-            ax1.set_title('Cortisol in Blood Plasma')
-            ax2.set_title('ACTH in Blood Plasma')
-        elif m_n == '2':
-            ax1.plot(times, res.T[1], label='Cortisol', color='blue')
-            ax1.plot(times, res.T[2], label='Cortisone', color='red')
-            ax2.plot(times, res.T[0], label='ACTH', color='orange')
-            ax1.set_title('Cortisol and Cortisone in Blood Plasma')
-            ax2.set_title('ACTH in Blood Plasma')
+        ax1.plot(times, res.T[1], label='Cortisol', color='blue')
+        ax2.plot(times, res.T[0], label='ACTH', color='orange')
+        ax1.set_title('Cortisol in Blood Plasma')
+        ax2.set_title('ACTH in Blood Plasma')
         ax1.set_ylabel('nmol/L')
         ax2.set_ylabel('pmol/L')
         ax2.set_xlabel('Time (minutes)')
+    elif m_n == '2':
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12))
+        axes = [ax1, ax2, ax3]
+        ax1.plot(times, res.T[1], label='Cortisol', color='blue')
+        ax2.plot(times, res.T[2], label='Cortisone', color='red')
+        ax3.plot(times, res.T[0], label='ACTH', color='orange')
+        ax1.set_title('Cortisol in Blood Plasma')
+        ax2.set_title('Cortisone in Blood Plasma')
+        ax3.set_title('ACTH in Blood Plasma')
+        ax1.set_ylabel('nmol/L')
+        ax2.set_ylabel('nmol/L')
+        ax3.set_ylabel('pmol/L')
+        ax3.set_xlabel('Time (minutes)')
     elif m_n in ['3a', '3b']:
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12))
         axes = [ax1, ax2, ax3]
@@ -85,9 +91,11 @@ def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filenam
 
         if m_n in ['1','2']:
             ax1.plot(timesBP, CORT, label='Cortisol data', color='blue', marker='o')
-            ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
-            if m_n == '2':
-                ax1.plot(timesBP, Cortisone, label='Cortisone data', color='red', marker='o')
+            if m_n == '1':
+                ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
+            elif m_n == '2':
+                ax2.plot(timesBP, Cortisone, label='Cortisone data', color='red', marker='o')
+                ax3.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
         elif m_n in ['3a','3b','4','5','6']:
             ax1.plot(timesBP, CORT, label='Total Cortisol data', color='blue', marker='o')
             if m_n in ['3a','3b']:
