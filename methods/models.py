@@ -434,7 +434,7 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         self.times = times
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
-        self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+        self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()['3a']
         self.alg = DDE.MethodOfSteps(DiffEq.Rosenbrock23())
         self.model = HPADDEModels.HPAModelFEInterCBGAlbSimple
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))

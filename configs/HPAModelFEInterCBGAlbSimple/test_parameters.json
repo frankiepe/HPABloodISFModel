@@ -1,8 +1,8 @@
 {
     "parameters": {
-        "gamma_a": 0.016,
+        "gamma_a": 0.026,
         "gamma_f": 0.0075,
-        "gamma_e": 0.05,
+        "gamma_e": 0.01,
         "K_a":  12.5,
         "K_f": 30,
         "K_mf": 250,
