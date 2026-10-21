@@ -497,9 +497,9 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         K_mf = par_dict['K_mf'] # Cortisol conc. when F->E reaction rate is half V_f
         K_me = par_dict['K_me'] # Cortisone conc. when E->F reaction rate is half V_e
         k_Fon = par_dict['k_Fon'] # F protein on-binding rate
-        k_Foff = par_dict['k_Foff']# F protein off-binding rate
+        k_Foff = par_dict['k_Fd']*k_Fon # F protein off-binding rate
         k_Eon = par_dict['k_Eon'] # E protein on-binding rate
-        k_Eoff = par_dict['k_Eoff'] # E protein off-binding rate
+        k_Eoff = par_dict['k_Ed']*k_Eon # E protein off-binding rate
         P_tot = par_dict['P_tot'] # Total protein concentration
         m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
         m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
@@ -599,7 +599,8 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
         if fail_flags:
             fail_flags_dict = {'CORT_peaks': False, 'ACTH_peaks': False, 'cortisone_peaks': False,
                                'CORT_ratio': False, 'cortisone_ratio': False, 'CORT_period_min': False, 
-                               'CORT_period_max': False, 'cortisone_period_min': False, 'cortisone_period_max': False}
+                               'CORT_period_max': False, 'cortisone_period_min': False, 'cortisone_period_max': False,
+                               'CORT_max': False, 'cortisone_max': False, 'ACTH_max': False}
             if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
                 fail_flags_dict['CORT_peaks'] = True
             if not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
@@ -626,6 +627,12 @@ class HPAModelFEInterCBGAlbSimple(pints.ForwardModel):
             else:
                 fail_flags_dict['cortisone_period_min'] = True
                 fail_flags_dict['cortisone_period_max'] = True
+            if max(total_CORT) > 500:
+                fail_flags_dict['CORT_max'] = True
+            if max(total_cortisone) > 100:
+                fail_flags_dict['cortisone_max'] = True
+            if max(result[:, 0]) > 50:
+                fail_flags_dict['ACTH_max'] = True
             return fail_flags_dict
         if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
             return True
@@ -1043,7 +1050,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         self.times = times
         self.tspan = (0.0, day_len*num_days)
         self.length_model = day_len
-        self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()
+        self.parameter_boundaries = PARAMETER_BOUNDARIES.copy()['5']
         self.alg = DDE.MethodOfSteps(DiffEq.Rosenbrock23())
         self.model = HPADDEModels.HPAModelFEInterBothCBGAlbBloodISF
         self.truncate_idx = int((self.length_model/self.step)*(self.num_days-self.days_to_keep))
