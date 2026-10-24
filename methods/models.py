@@ -1119,9 +1119,9 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         K_mfI = par_dict['K_mfI'] # Cortisol conc. when F->E reaction rate is half V_f_i in ISF (new param)
         K_meI = par_dict['K_meI'] # Cortisone conc. when E->F reaction rate is half V_e_i in ISF (new param)
         k_Fon = par_dict['k_Fon'] # F protein on-binding rate
-        k_Foff = par_dict['k_Foff'] # F protein off-binding rate
+        k_Foff = par_dict['k_Fd']*k_Fon # F protein off-binding rate
         k_Eon = par_dict['k_Eon'] # E protein on-binding rate
-        k_Eoff = par_dict['k_Eoff'] # E protein off-binding rate
+        k_Eoff = par_dict['k_Ed']*k_Eon # E protein off-binding rate
         P_tot = par_dict['P_tot'] # Total protein concentration
         k_BI_F = par_dict['k_BI_F'] # Cortisiol permeability constant
         k_BI_E = par_dict['k_BI_E'] # Cortisone permeability constant
@@ -1227,7 +1227,8 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         if fail_flags:
             fail_flags_dict = {'CORT_peaks': False, 'ACTH_peaks': False, 'cortisone_peaks': False,
                                 'CORT_ratio': False, 'cortisone_ratio': False, 'CORT_period_min': False, 
-                                'CORT_period_max': False, 'cortisone_period_min': False, 'cortisone_period_max': False}
+                                'CORT_period_max': False, 'cortisone_period_min': False, 'cortisone_period_max': False,
+                                'CORT_max': False, 'cortisone_max': False, 'ACTH_max': False}
             if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
                 fail_flags_dict['CORT_peaks'] = True
             if not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
@@ -1254,6 +1255,12 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
             else:
                 fail_flags_dict['cortisone_period_min'] = True
                 fail_flags_dict['cortisone_period_max'] = True
+            if max(total_CORT) > 500:
+                fail_flags_dict['CORT_max'] = True
+            if max(total_cortisone) > 100:
+                fail_flags_dict['cortisone_max'] = True
+            if max(result[:, 0]) > 50:
+                fail_flags_dict['ACTH_max'] = True
             return fail_flags_dict
         if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
             return True
