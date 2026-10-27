@@ -138,7 +138,7 @@ def plot_parameter_histograms(param_values, param_name, hist_file, thresh, model
     ax.set_xlim(lb, ub)
     ax.fill_between(xr, 0, 1/(ub-lb), color='tab:blue', alpha=0.4, label='Prior dist.')
     ax.axvline(0.5*(ub-lb)+lb, color='tab:blue', alpha = 0.4, linestyle='--', label='Prior mean/median')
-    if param_name in ['k_Fon', 'k_Foff', 'k_Eon', 'k_Eoff']:
+    if param_name in ['k_Fon', 'k_Eon']:
         _, bins, _ = ax.hist(param_values, bins=bins, density=True, color="grey", alpha=0.0001)
         logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
         ax.hist(param_values, bins=logbins, edgecolor='black', density=True, color="grey", alpha=0.1, label='Histogram')

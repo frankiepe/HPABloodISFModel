@@ -1,0 +1,41 @@
+{
+    "parameters": {
+        "gamma_a": 0.05,
+        "gamma_f_b": 0.008,
+        "gamma_f_i": 0.008,
+        "gamma_e_b": 0.01,
+        "gamma_e_i": 0.01,
+        "K_a": 5,
+        "K_f": 5,
+        "K_mfI": 20,
+        "K_meI": 200,
+        "k_Fon": 1e-1,
+        "k_Fd": 200,
+        "k_Eon": 1e-1,
+        "k_Ed": 400,
+        "P_tot": 1000,
+        "k_BI_F": 0.1,
+        "k_BI_E": 0.1,
+        "m_a": 3,
+        "m_f": 4,
+        "V_f_i": 3,
+        "V_e_i": 6,
+        "V_B": 5,
+        "V_I": 20,
+        "tau": 30,
+        "alpha": 50,
+        "lambda_a": 10,
+        "lambda_s": 3,
+        "t_s": 0,
+        "sigma": 0.5
+    },
+    "initial_conditions": {
+        "A": 5,
+        "F_B": 20,
+        "E_B": 20,
+        "F_bound": 0, 
+        "E_bound": 0,
+        "F_I": 0,
+        "E_I": 0
+    }
+}

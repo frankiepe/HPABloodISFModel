@@ -13,16 +13,16 @@ parser = argparse.ArgumentParser(description='Fit models to data.')
 parser.add_argument('-m', '--model', type = str, help='Select model for optimisation: ' \
                     '1: BaseHPAModel, 2: HPAModelFEInter, 3a: HPAModelFEInterCBGAlbSimple, ' \
                     '3b: HPAModelFEInterCBGAlb, 4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
-                    '6: HPAModelCRHSupp')
+                    '6: HPAModelFEInterISFOnlyCBGAlbBloodISF')
 parser.add_argument('-w', '--warmup', type = int, default=5, help='No. of days of warmup (to reach steady state)')
-parser.add_argument('-s', '--step', type=float, default=0.1, help='Step size for dde solver (must be sufficiently small for convergence)')
+parser.add_argument('-s', '--step', type=float, default=1, help='Step size for dde solver (must be sufficiently small for convergence)')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
-parser.add_argument('-c', '--constraint', type=str, help='Constraint to test')
+parser.add_argument('-c', '--constraints', type=str, nargs='*', help='Constraints to test')
 parser.add_argument('-f', '--fixed', type=str, nargs='*', help='Parameters to fix (i.e. not fit)')
 parser.add_argument('-r', '--reps', type=int, default=1000, help='Number of simulation repetitions')
 args = parser.parse_args()
 
-def run_pass_fail_constraint(m_n, warmup, step, outdir, fixed, reps, constraint, days_to_keep=1):
+def run_pass_fail_constraint(m_n, warmup, step, outdir, fixed, reps, constraints, days_to_keep=1):
     # Get config file
     init_pars_file = f'configs/{model_dict[m_n]}/test_parameters.json'
 
@@ -65,7 +65,7 @@ def run_pass_fail_constraint(m_n, warmup, step, outdir, fixed, reps, constraint,
     elif m_n == '5':
         model = models.HPAModelFEInterBothCBGAlbBloodISF
     elif m_n == '6':
-        model = models.HPAModelCRHSupp
+        model = models.HPAModelFEInterISFOnlyCBGAlbBloodISF
 
     # Define model
     dde_model = model(parameters=init_pars, fixed_pars=fixed_pars, init_conds=ics, times=times, 
@@ -83,12 +83,16 @@ def run_pass_fail_constraint(m_n, warmup, step, outdir, fixed, reps, constraint,
         par_i = np.asarray(bounds.sample(1)[0], dtype=float) # sample
         fail_flags_i = dde_model.simulate(list(par_i), times, fitting=False, reject=True, fail_flags=True)
         pars_all[i] = par_i
-        dict_fail_flags_all[i] = fail_flags_i[constraint]
+        for constraint in constraints:
+            if i not in dict_fail_flags_all:
+                dict_fail_flags_all[i] = False
+            if fail_flags_i[constraint] == True:
+                dict_fail_flags_all[i] = True
 
      # Save parameters
     df = pd.DataFrame(pars_all, columns=init_pars.keys()) 
     df.insert(0, "Fail", dict_fail_flags_all)
-    df.to_csv("output/" + outdir + f"/{model_dict[m_n]}/pars" + f"/all_pars_model{m_n}_{constraint}.csv", index=False)
+    df.to_csv("output/" + outdir + f"/{model_dict[m_n]}/pars" + f"/all_pars_model{m_n}_{[c for c in constraints]}.csv", index=False)
 
 if __name__ == "__main__":
     # Read parsed variables
@@ -98,7 +102,7 @@ if __name__ == "__main__":
     outdir = args.outdir
     fixed = args.fixed if args.fixed is not None else {}
     reps = args.reps
-    constraint = args.constraint
+    constraints = args.constraints
 
     # Make directories if necessary
     if not os.path.exists(f'output/{outdir}'):
@@ -109,4 +113,4 @@ if __name__ == "__main__":
         os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots', exist_ok=True)
 
     # Run the pass/fail constraint function
-    run_pass_fail_constraint(m_n, warmup, step, outdir, fixed, reps, constraint)
+    run_pass_fail_constraint(m_n, warmup, step, outdir, fixed, reps, constraints)

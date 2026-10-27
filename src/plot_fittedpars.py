@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(description='Fit models to data.')
 parser.add_argument('-m', '--model', type = str, help='Select model for optimisation: ' \
                     '1: BaseHPAModel, 2: HPAModelFEInter, 3a: HPAModelFEInterCBGAlbSimple, ' \
                     '3b: HPAModelFEInterCBGAlb, 4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
-                    '6: HPAModelCRHSupp')
+                    '6: HPAModelFEInterISFOnlyCBGAlbBloodISF')
 parser.add_argument('-n', '--ninds', type=int, help='Number of datasets fitted')
 parser.add_argument('-r', '--nreps', type=int, help='Number of fitting reps')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
@@ -40,7 +40,7 @@ def plot_pars(m_n, num_inds, reps, outdir):
     if m_n == '2':
         fig, axes = plt.subplots(3, 6, figsize=(14, 10))
     if m_n == '3a':
-        fig, axes = plt.subplots(3, 7, figsize=(14, 10))
+        fig, axes = plt.subplots(4, 6, figsize=(14, 10))
     if m_n == '3b':
         fig, axes = plt.subplots(5, 5, figsize=(14, 10))
     if m_n == '4':
@@ -53,12 +53,14 @@ def plot_pars(m_n, num_inds, reps, outdir):
 
     for i, param in enumerate(fitted_pars):
         sns.violinplot(x=df[param], ax=axes[i], color='skyblue', inner='point', orient='h')
-        lb = pb[param][0]
-        ub = pb[param][1]
+        lb = pb[m_n][param][0]
+        ub = pb[m_n][param][1]
         axes[i].axvline(lb)
         axes[i].axvline(ub)
         axes[i].set_title(param)
         axes[i].set_ylabel('')
+        if param in ['k_Fon', 'k_Eon']:
+            axes[i].set_xscale('log')
 
     plt.suptitle(f"Violin plots (Fitting model {m_n})")
     plt.tight_layout()

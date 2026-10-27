@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser(description='Fit models to data.')
 parser.add_argument('-m', '--model', type = str, help='Select model for optimisation: ' \
                     '1: BaseHPAModel, 2: HPAModelFEInter, 3a: HPAModelFEInterCBGAlbSimple, ' \
                     '3b: HPAModelFEInterCBGAlb, 4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
-                    '6: HPAModelCRHSupp')
+                    '6: HPAModelFEInterISFOnlyCBGAlbBloodISF')
 parser.add_argument('-i', '--ind', type = int, help='Select data index')
 parser.add_argument('-w', '--warmup', type = int, default=5, help='No. of days of warmup (to reach steady state)')
 parser.add_argument('-s', '--step', type=float, default=1, help='Step size for dde solver (must be sufficiently small for convergence)')
@@ -81,7 +81,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
         m_wrap1 = mc.ModelBloodFEInterCBGAlbSimple
         m_wrap2 = mc.ModelISFFEInterCBGAlb
     elif m_n == '6':
-        model = models.HPAModelFEInterBothCBGAlbDiffBindBloodISF
+        model = models.HPAModelFEInterISFOnlyCBGAlbBloodISF
         m_wrap1 = mc.ModelBloodFEInterCBGAlbSimple
         m_wrap2 = mc.ModelISFFEInterCBGAlb
 
@@ -148,11 +148,11 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
 
     if m_n == '6':
         transform = pints.ComposedTransformation(
-                        pints.IdentityTransformation(11),
+                        pints.IdentityTransformation(9),
                         pints.LogTransformation(1),
                         pints.IdentityTransformation(1),
                         pints.LogTransformation(1),
-                        pints.IdentityTransformation(18),
+                        pints.IdentityTransformation(16),
                     )
     elif m_n == '3a':
         transform = pints.ComposedTransformation(

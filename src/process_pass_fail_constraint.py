@@ -15,13 +15,13 @@ parser = argparse.ArgumentParser(description='Fit models to data.')
 parser.add_argument('-m', '--model', type = str, help='Select model for optimisation: ' \
                     '1: BaseHPAModel, 2: HPAModelFEInter, 3a: HPAModelFEInterCBGAlbSimple, ' \
                     '3b: HPAModelFEInterCBGAlb, 4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
-                    '6: HPAModelCRHSupp')
+                    '6: HPAModelFEInterISFOnlyCBGAlbBloodISF')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
 parser.add_argument('-f', '--fixed', type=str, nargs='*', help='Parameters to fix (i.e. not fit)')
-parser.add_argument('-c', '--constraint', type=str, help='Constraint to test')
+parser.add_argument('-c', '--constraints', type=str, nargs='*', help='Constraints to test')
 args = parser.parse_args()
 
-def process_pass_fail_constraint(m_n, outdir, fixed, constraint):
+def process_pass_fail_constraint(m_n, outdir, fixed, constraints):
     # Get config file
     init_pars_file = f'configs/{model_dict[m_n]}/test_parameters.json'
 
@@ -41,12 +41,13 @@ def process_pass_fail_constraint(m_n, outdir, fixed, constraint):
         else:
             fixed_pars.pop(par_key)
 
-    df = pd.read_csv("output/" + outdir + f"/{model_dict[m_n]}/pars" + f"/all_pars_model{m_n}_{constraint}.csv")
+    df = pd.read_csv("output/" + outdir + f"/{model_dict[m_n]}/pars" + f"/all_pars_model{m_n}_{[c for c in constraints]}.csv")
     df_pass = df[df.Fail==False]
     pars_accept = []
     for _, row in df_pass.iterrows():
         pars_accept.append([float(row[i]) for i in init_pars.keys()])
 
+    print(f"Number of accepted parameter sets: {len(pars_accept)}")
     # Plot histograms of accepted parameters and correlation plot
     if len(pars_accept) > 0:
         for i in np.arange(0, len(init_pars.keys())):
@@ -54,16 +55,16 @@ def process_pass_fail_constraint(m_n, outdir, fixed, constraint):
             param_values = [p[i] for p in pars_accept]
 
             if outdir is not None:
-                hist_file = os.path.join("output/" + outdir + f"/{model_dict[m_n]}/plots", f"hist_{param_name}_model{m_n}_{constraint}.png")
+                hist_file = os.path.join("output/" + outdir + f"/{model_dict[m_n]}/plots", f"hist_{param_name}_model{m_n}_{[c for c in constraints]}.png")
             else:
-                hist_file = f"hist_{param_name}_model{m_n}_{constraint}.png"
+                hist_file = f"hist_{param_name}_model{m_n}_{[c for c in constraints]}.png"
 
-            plotting.plot_parameter_histograms(param_values, param_name, hist_file, constraint)
+            plotting.plot_parameter_histograms(param_values, param_name, hist_file, [c for c in constraints], m_n)
             print(f"Saved histogram for '{param_name}' to: {hist_file}")
 
         df = pd.DataFrame(pars_accept, columns=init_pars.keys())
         sns.pairplot(df, kind="kde", corner=True)
-        plt.savefig("output/" + outdir + f"/{model_dict[m_n]}/plots" + f"/pairplot_model{m_n}_{constraint}.png")
+        plt.savefig("output/" + outdir + f"/{model_dict[m_n]}/plots" + f"/pairplot_model{m_n}_{[c for c in constraints]}.png")
     else:
         print("No accepted parameters were found; histogram was not created.")
 
@@ -72,7 +73,7 @@ if __name__ == "__main__":
     m_n = args.model
     outdir = args.outdir
     fixed = args.fixed if args.fixed is not None else {}
-    constraint = args.constraint
+    constraints = args.constraints
 
     # Make directories if necessary
     if not os.path.exists(f'output/{outdir}'):
@@ -83,5 +84,5 @@ if __name__ == "__main__":
         os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots', exist_ok=True)
 
     # Run the pass/fail constraint function
-    process_pass_fail_constraint(m_n, outdir, fixed, constraint)
+    process_pass_fail_constraint(m_n, outdir, fixed, constraints)
     

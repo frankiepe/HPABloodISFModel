@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(description='Fit models to data.')
 parser.add_argument('-m', '--model', type = str, help='Select model for optimisation: ' \
                     '1: BaseHPAModel, 2: HPAModelFEInter, 3a: HPAModelFEInterCBGAlbSimple, ' \
                     '3b: HPAModelFEInterCBGAlb, 4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
-                    '6: HPAModelCRHSupp')
+                    '6: HPAModelFEInterISFOnlyCBGAlbBloodISF')
 parser.add_argument('-s', '--step', type=float, default=1, help='Step size for dde solver')
 parser.add_argument('-w', '--warmup', type = int, default=5, help='No. of days of warmup (to reach steady state)')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
@@ -51,7 +51,7 @@ def run_model(m_n, step, warmup, days_to_keep=1):
     elif m_n == '5':
         model = models.HPAModelFEInterBothCBGAlbBloodISF
     elif m_n == '6':
-        model = models.HPAModelFEInterBothCBGAlbDiffBindBloodISF
+        model = models.HPAModelFEInterISFOnlyCBGAlbBloodISF
 
     dde_model = model(parameters=pars, fixed_pars={}, init_conds=ics, times=times, 
                       num_days=num_days, days_to_keep=days_to_keep, step=step)
