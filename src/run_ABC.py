@@ -11,16 +11,15 @@ import methods.models as models
 import methods.classes as mc
 from methods import model_dict, day_len
 import methods.data_processing as dp
-import warnings
 
 parser = argparse.ArgumentParser(description='Fit models to data.')
 parser.add_argument('-m', '--model', type = str, help='Select model for optimisation: ' \
                     '1: BaseHPAModel, 2: HPAModelFEInter, 3a: HPAModelFEInterCBGAlbSimple, ' \
                     '3b: HPAModelFEInterCBGAlb, 4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
-                    '6: HPAModelCRHSupp')
+                    '6: HPAModelFEInterISFOnlyCBGAlbBloodISF')
 parser.add_argument('-i', '--ind', type = int, help='Select data index')
 parser.add_argument('-w', '--warmup', type = int, default=5, help='No. of days of warmup (to reach steady state)')
-parser.add_argument('-s', '--step', type=float, default=0.1, help='Step size for dde solver (must be sufficiently small for convergence)')
+parser.add_argument('-s', '--step', type=float, default=1, help='Step size for dde solver (must be sufficiently small for convergence)')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
 parser.add_argument('-f', '--fixed', type=str, nargs='*', help='Parameters to fix (i.e. not fit)')
 parser.add_argument('-r', '--reps', type=int, default=1000, help='Number of simulation repetitions')
@@ -77,14 +76,15 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, reps, days_to_keep=1):
         m_wrap1 = mc.ModelBloodFEInterCBGAlb
         m_wrap2 = mc.ModelISFFEInterCBGAlb
     elif m_n == '6':
-        model = models.HPAModelCRHSupp
-        m_wrap = mc.ModelBlood
+        model = models.HPAModelFEInterISFOnlyCBGAlbBloodISF
+        m_wrap1 = mc.ModelBloodFEInterCBGAlbSimple
+        m_wrap2 = mc.ModelISFFEInterCBGAlb
 
     # Define model
     dde_model = model(parameters=init_pars, fixed_pars=fixed_pars, init_conds=ics, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
 
     # Wrap in blood or ISF model for fitting
-    if m_n in ['1','2','3a','3b','6']:
+    if m_n in ['1','2','3a','3b']:
         full_model = m_wrap(dde_model, init_pars, times)
     else:
         full_model1 = m_wrap1(dde_model, init_pars, times)
@@ -107,7 +107,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, reps, days_to_keep=1):
         timesBP = timesBP+startBP-startISF
 
     # Define Pints problem for optimisation
-    if m_n in ['1','6']:
+    if m_n in ['1']:
         problem = pints.MultiOutputProblem(full_model, timesBP, np.array([ACTH, CORT]).T)
         f = pints.MeanSquaredError(problem, weights=[np.mean(CORT)/np.mean(ACTH), 1]) # weighting to account for difference in scale between ACTH and CORT
     elif m_n in ['2','3a','3b']:
@@ -130,19 +130,12 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, reps, days_to_keep=1):
     objs = np.empty(reps, dtype=float)
     i = 0
     while i < reps:
-        par_i = np.asarray(bounds.sample(1)[0], dtype=float) # sample
-        with warnings.catch_warnings(record=True) as caught_warnings:
-            warnings.simplefilter("always", RuntimeWarning)
-            obj_i = float(f(list(par_i))) # evaluate objective
-
-            # Process any captured Runtime warnings
-            if len(caught_warnings) > 0:
-                print(f"{par_i} produced warning(s)")
-                print(f"Correponds to objective of: {obj_i}")
-        if obj_i < 1e6:
-            if i % 500 == 0:
+        q1 = bounds.sample()
+        obj_i = f(list(q1[0]))
+        if obj_i < 1e8:
+            if i % 10 == 0:
                 print(f"Iteration {i}/{reps}")
-            pars_all[i] = par_i
+            pars_all[i] = list(q1[0])
             objs[i] = obj_i
             i+=1
 

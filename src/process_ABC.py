@@ -16,10 +16,10 @@ parser = argparse.ArgumentParser(description='Fit models to data.')
 parser.add_argument('-m', '--model', type = str, help='Select model for optimisation: ' \
                     '1: BaseHPAModel, 2: HPAModelFEInter, 3a: HPAModelFEInterCBGAlbSimple, ' \
                     '3b: HPAModelFEInterCBGAlb, 4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
-                    '6: HPAModelCRHSupp')
+                    '6: HPAModelFEInterISFOnlyCBGAlbBloodISF')
 parser.add_argument('-i', '--ind', type = int, help='Select data index')
 parser.add_argument('-w', '--warmup', type = int, default=5, help='No. of days of warmup (to reach steady state)')
-parser.add_argument('-s', '--step', type=float, default=0.1, help='Step size for dde solver (must be sufficiently small for convergence)')
+parser.add_argument('-s', '--step', type=float, default=1, help='Step size for dde solver (must be sufficiently small for convergence)')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
 parser.add_argument('-f', '--fixed', type=str, nargs='*', help='Parameters to fix (i.e. not fit)')
 parser.add_argument('-t', '--thresh', type = float, default=2000, help='Objective threshold for ABC filter')
@@ -68,7 +68,7 @@ def process_ABC(m_n, d_n, warmup, step, outdir, fixed, thresh, days_to_keep=1):
     elif m_n == '5':
         model = models.HPAModelFEInterBothCBGAlbBloodISF
     elif m_n == '6':
-        model = models.HPAModelCRHSupp
+        model = models.HPAModelFEInterISFOnlyCBGAlbBloodISF
 
     # Define model
     dde_model = model(parameters=init_pars, fixed_pars=fixed_pars, init_conds=ics, times=times, num_days=num_days, days_to_keep=days_to_keep, step=step)
@@ -92,7 +92,7 @@ def process_ABC(m_n, d_n, warmup, step, outdir, fixed, thresh, days_to_keep=1):
             else:
                 hist_file = f"hist_{param_name}_model{m_n}_dataID{d_n}.png"
 
-            plotting.plot_parameter_histograms(param_values, param_name, hist_file, thresh)
+            plotting.plot_parameter_histograms(param_values, param_name, hist_file, thresh, m_n)
             print(f"Saved histogram for '{param_name}' to: {hist_file}")
 
         df = pd.DataFrame(pars_accept, columns=init_pars.keys())
