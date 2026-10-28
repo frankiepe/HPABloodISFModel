@@ -134,9 +134,9 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
     print(f'q0 start: {q0}')
     print(f'eval q0 start: {f(q0)}')
     minobj = f(q0)
-    for i in range(5000):
+    for i in range(10000):
         if i % 100 == 0:
-            print(f'Initial sampling, iteration {i} of 5000')
+            print(f'Initial sampling, iteration {i} of 10000')
         q1 = bounds.sample()
         evalobj = f(list(q1[0]))
         if evalobj < minobj:
@@ -180,7 +180,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
             f, q0, boundaries=bounds, transformation=transform, method=pints.CMAES)
     opt.set_max_iterations(50000)
     opt.set_log_interval(iters=50, warm_up=5)
-    opt.set_function_tolerance(iterations=5000, threshold=1e-3)
+    opt.set_function_tolerance(iterations=10000, threshold=1e-3)
 
     # Simulate initial parameterisation
     res_init = dde_model.simulate(q0, times, fitting=False, reject=False)
