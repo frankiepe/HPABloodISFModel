@@ -117,7 +117,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, reps, days_to_keep=1):
         problem1 = pints.MultiOutputProblem(full_model1, timesBP, np.array([ACTH, CORT, Cortisone]).T)
         problem2 = pints.MultiOutputProblem(full_model2, timesISF, np.array([mCORT, mCortisone]).T)
         f1 = pints.MeanSquaredError(problem1, weights=[np.mean(CORT)/np.mean(ACTH), 1, np.mean(CORT)/np.mean(Cortisone)])
-        f2 = pints.MeanSquaredError(problem2, weights=[np.mean(CORT)/np.mean(mCORT), np.mean(CORT)/np.mean(mCortisone)])
+        f2 = pints.MeanSquaredError(problem2)
         f = pints.SumOfErrors([f1,f2])
 
     # Set up model boundaries

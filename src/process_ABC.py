@@ -96,7 +96,18 @@ def process_ABC(m_n, d_n, warmup, step, outdir, fixed, thresh, days_to_keep=1):
             print(f"Saved histogram for '{param_name}' to: {hist_file}")
 
         df = pd.DataFrame(pars_accept, columns=init_pars.keys())
-        sns.pairplot(df, kind="kde", corner=True)
+        g = sns.pairplot(df, kind="kde", corner=True)
+        log_columns = ["k_Fon", "k_Eon"]
+        for i, y_var in enumerate(g.y_vars):
+            for j, x_var in enumerate(g.x_vars):
+                ax = g.axes[i, j]
+                if ax is not None:  # Skip empty axes in corner mode
+                    if x_var in log_columns:
+                        ax.set_xscale("log")
+                        ax.set_xlim(1e-3, 6)
+                    if y_var in log_columns:
+                        ax.set_yscale("log")
+                        ax.set_ylim(1e-3, 6)
         plt.savefig("output/" + outdir + f"/{model_dict[m_n]}/plots" + f"/pairplot_model{m_n}_dataID{d_n}.png")
     else:
         print("No accepted parameters were found; histogram was not created.")
