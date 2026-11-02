@@ -139,7 +139,6 @@ class Model5Boundaries(pints.Boundaries):
             """
             return self._upper
 
-
 class Model6Boundaries(pints.Boundaries):
     """
     Boundary contraints of the parameters
