@@ -57,13 +57,13 @@ def run_model(m_n, step, warmup, days_to_keep=1):
                       num_days=num_days, days_to_keep=days_to_keep, step=step)
 
     # Run the simulation
+    p = list(pars.values())
     print("Running simulation...")       
-    result = dde_model.simulate(list(pars.values()), times, fitting=False, reject=False)
+    result = dde_model.simulate(p, times, fitting=False, reject=False)
     print("Simulation complete.")
 
     # Get CRH drive
-    crh_drive = [dde_model.crh(t) for t in times[int((day_len*warmup)/step):]]
-
+    crh_drive = [dde_model.crh(t, t_s=p[-2], lambda_a=p[-4], lambda_s=p[-3], sigma=p[-1]) for t in times[int((day_len*warmup)/step):]]
     return result, times, crh_drive
 
 if __name__ == "__main__":
