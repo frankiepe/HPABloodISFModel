@@ -13,6 +13,7 @@ import methods.classes as mc
 from methods import model_dict, day_len
 import methods.plotting as plotting
 import methods.data_processing as dp
+import json
 
 parser = argparse.ArgumentParser(description='Fit models to data.')
 parser.add_argument('-m', '--model', type = str, help='Select model for optimisation: ' \
@@ -232,9 +233,14 @@ if __name__ == "__main__":
     # Perform fitting    
     pars, sc, ips = get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed)
 
-    # Save fitted parameters
-    with open(f"output/{outdir}/{model_dict[m_n]}/fits/fit_dataid{d_n}_seed{rseed}.csv", 'w') as f:
-        f.write('"fitted_pars","values","score"')
-        f.write("\n")
-        writer = csv.writer(f)
-        writer.writerow([ips.keys(), pars, sc])
+    # Save fitted parameters and score to JSON
+    path = f"output/{outdir}/{model_dict[m_n]}/fits/fit_dataid{d_n}_seed{rseed}.json"
+    pars_list = pars.tolist() if isinstance(pars, np.ndarray) else list(pars)
+    out_data = {
+        "parameters": dict(zip(ips.keys(), pars_list)),
+        "score": float(
+            sc
+        ),
+    }
+    with open(path, "w") as f:
+        json.dump(out_data, f, indent=4)
