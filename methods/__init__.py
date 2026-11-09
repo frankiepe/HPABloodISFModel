@@ -86,7 +86,7 @@ PARAMETER_BOUNDARIES = {
             'tau': (12.5, 40),
             'alpha': (1, 100),
             'lambda_a': (0, 20),
-            'lambda_s': (0, 5),
+            'lambda_s': (0, 4),
             't_s': (-360, 360),
             'sigma': (0, 1)
             },

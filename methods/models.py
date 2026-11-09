@@ -1061,6 +1061,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
                     abstol=1e-4):
         self.num_days = num_days
         self.days_to_keep = days_to_keep
+        self.warmup = num_days - days_to_keep
         self.step = step
         self.signal_range = signal_range
         self.reject = reject
@@ -1189,19 +1190,20 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
             result = filtered_output
 
         if (self.reject == True) and (reject == True):
+            crh = [self.crh(t, t_s=t_s, lambda_a=lambda_a, lambda_s=lambda_s, sigma=sigma) for t in self.times_fitting]
             if fitting:
                 prop_day = (times[-1]-times[0])/day_len
                 if fail_flags:
-                    return self.reject_parameter_combination(result, prop_day, times=times, fail_flags=fail_flags)
+                    return self.reject_parameter_combination(result, prop_day, times=times, crh=crh, fail_flags=fail_flags)
                 else:
-                    if (self.reject_parameter_combination(result, prop_day, times=times)):
+                    if (self.reject_parameter_combination(result, prop_day, times=times, crh=crh)):
                         return np.full((len(result), np.shape(result)[1]), 5000)
             else:
                 prop_day = 1
                 if fail_flags:
-                    return self.reject_parameter_combination(result, prop_day, times=self.times_fitting, fail_flags=fail_flags)
+                    return self.reject_parameter_combination(result, prop_day, times=self.times_fitting, crh=crh, fail_flags=fail_flags)
                 else:
-                    if (self.reject_parameter_combination(result, prop_day, times=self.times_fitting, fail_flags=fail_flags)):
+                    if (self.reject_parameter_combination(result, prop_day, times=self.times_fitting, crh=crh)):
                         return np.full((len(result), np.shape(result)[1]), 5000)
         return result
 
@@ -1234,7 +1236,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
     # Or if the ratio of free cortisone to total cortisone exceeds 0.4
     # Or if the min time between peaks is less than 1hr
     # Or if the max time between peaks is more than 8hrs
-    def reject_parameter_combination(self, result, prop_day, times, fail_flags=False):
+    def reject_parameter_combination(self, result, prop_day, times, crh, fail_flags=False):
         lower_bound, upper_bound = self.signal_range
         total_CORT = result[:, 1]+result[:, 3]
         total_cortisone = result[:, 2]+result[:, 4]
@@ -1243,6 +1245,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         signals_cortisone, _ = scipy_signal.find_peaks(total_cortisone)
         signal_times_CORT = times[signals_CORT]
         signal_times_cortisone = times[signals_cortisone]
+        max_crh=max(crh)
         if len(signal_times_CORT)>0:
             period_CORT = np.append(np.diff(signal_times_CORT), day_len-signal_times_CORT[-1]+signal_times_CORT[0])
         if len(signal_times_cortisone)>0:
@@ -1251,7 +1254,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
             fail_flags_dict = {'CORT_peaks': False, 'ACTH_peaks': False, 'cortisone_peaks': False,
                                 'CORT_ratio': False, 'cortisone_ratio': False, 'CORT_period_min': False, 
                                 'CORT_period_max': False, 'cortisone_period_min': False, 'cortisone_period_max': False,
-                                'CORT_max': False, 'cortisone_max': False, 'ACTH_max': False}
+                                'CORT_max': False, 'cortisone_max': False, 'ACTH_max': False, 'max_CRH': False}
             if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
                 fail_flags_dict['CORT_peaks'] = True
             if not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
@@ -1284,6 +1287,8 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
                 fail_flags_dict['cortisone_max'] = True
             if max(result[:, 0]) > 50:
                 fail_flags_dict['ACTH_max'] = True
+            if max_crh > 200:
+                fail_flags_dict['max_CRH'] = True
             return fail_flags_dict
         if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
             return True
@@ -1294,6 +1299,8 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         elif (result[:, 1]/total_CORT).max() > 0.2 or (result[:, 2]/total_cortisone).max() > 0.4:
             return True
         elif min(period_CORT) < 60 or max(period_CORT) > 480 or min(period_cortisone) < 60 or max(period_cortisone) > 480:
+            return True
+        elif max_crh > 200:
             return True
         return False
 

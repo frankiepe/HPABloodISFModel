@@ -52,18 +52,27 @@ def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filenam
         ax3.set_title('ACTH in Blood Plasma')
     else:
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(20, 8))
-        axes = [ax1, ax2, ax3, ax4]
         F_tot = res.T[1]+res.T[3]
         E_tot = res.T[2]+res.T[4]
-        ax1.plot(times, F_tot, label='Total Cortisol', color='blue')
-        ax1.plot(times, res.T[1], label='Free Cortisol', color='green')
-        ax2.plot(times, E_tot, label='Total Cortisone', color='red')
-        ax2.plot(times, res.T[2], label='Free Cortisone', color='yellow')
-        ax3.plot(times, res.T[5], label='Free Cortisol', color='blue', alpha=0.5)
-        ax3.plot(times, res.T[6], label='Free Cortisone', color='red', alpha=0.5)
-        ax4.plot(times, res.T[0], label='ACTH', color='orange')
-        ax1.set_ylabel('nmol/L')
-        ax2.set_ylabel('nmol/L')
+        ax1.plot(times, F_tot, label='Total Cortisol', color='#E83151')
+        ax5 = ax1.twinx()
+        ax5.yaxis.tick_left()
+        ax5.yaxis.set_label_position("left")
+        ax1.spines['left'].set_position(('axes', -0.095))
+        ax5.plot(times, res.T[1], label='Free Cortisol', color='#E83151', alpha=0.6, linestyle='--')
+        ax2.plot(times, E_tot, label='Total Cortisone', color='#6461A0')
+        ax6 = ax2.twinx()
+        ax6.yaxis.tick_left()
+        ax6.yaxis.set_label_position("left")
+        ax2.spines['left'].set_position(('axes', -0.095))
+        ax6.plot(times, res.T[2], label='Free Cortisone', color='#6461A0', alpha=0.6, linestyle='--')
+        ax3.plot(times, res.T[5], label='Free Cortisol', color='#E83151', alpha=0.8)
+        ax3.plot(times, res.T[6], label='Free Cortisone', color='#6461A0', alpha=0.8)
+        ax4.plot(times, res.T[0], label='ACTH', color='#FB8B24')
+        ax1.set_ylabel('nmol/L (total)')
+        ax2.set_ylabel('nmol/L (total)')
+        ax5.set_ylabel('nmol/L (free)')
+        ax6.set_ylabel('nmol/L (free)')
         ax3.set_ylabel('nmol/L')
         ax4.set_ylabel('pmol/L')
         ax3.set_xlabel('Time (minutes)')
@@ -72,6 +81,7 @@ def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filenam
         ax2.set_title('Cortisone in Blood Plasma')
         ax3.set_title('Cortisol and Cortisone in ISF')
         ax4.set_title('ACTH in Blood Plasma')
+        axes = [ax1, ax2, ax3, ax4, ax5, ax6]
 
     if plot_data:
         print(f"Plotting data for individual #{d_n}...")
@@ -97,21 +107,24 @@ def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filenam
                 ax2.plot(timesBP, Cortisone, label='Cortisone data', color='red', marker='o')
                 ax3.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
         elif m_n in ['3a','3b','4','5','6']:
-            ax1.plot(timesBP, CORT, label='Total Cortisol data', color='blue', marker='o')
+            ax1.plot(timesBP, CORT, label='Total Cortisol data', color='#E83151', marker='o')
             if m_n in ['3a','3b']:
                 ax2.plot(timesBP, Cortisone, label='Total Cortisone data', color='red', marker='o')
                 ax3.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
             elif m_n in ['4', '5', '6']:
-                ax2.plot(timesBP, Cortisone, label='Total Cortisone data', color='red', marker='o')
-                ax3.plot(timesISF, mCORT, label='Free Cortisol data', color='blue', marker='o', alpha=0.5)
-                ax3.plot(timesISF, mCortisone, label='Free Cortisone data', color='red', marker='o', alpha=0.5)
-                ax4.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
+                ax2.plot(timesBP, Cortisone, label='Total Cortisone data', color='#6461A0', marker='o')
+                ax3.plot(timesISF, mCORT, label='Free Cortisol data', color='#E83151', marker='o', alpha=0.8)
+                ax3.plot(timesISF, mCortisone, label='Free Cortisone data', color='#6461A0', marker='o', alpha=0.8)
+                ax4.plot(timesBP, ACTH, label='ACTH data', color='#FB8B24', marker='o')
 
     for ax in axes:
         ax.set_xlim(list(times)[0], list(times)[-1])
         for i in range(days_to_keep):
             ax.axvline(x=day_len*i, color='gray', linestyle='--') 
-        ax.legend()
+        if ax in [ax5,ax6]:
+            ax.legend(loc='upper left', bbox_to_anchor=(0.25, 1))
+        else:
+            ax.legend(loc='upper left', bbox_to_anchor=(0, 1))
         axn = ax.twinx()
         axn.plot(times, crh_drive, color = 'grey', alpha = 0.4)
         axn.set_ylabel('CRH drive', color = 'grey')
@@ -121,6 +134,7 @@ def plot_model_output(m_n, res, times, crh_drive, outdir='model_output', filenam
     savedir = f'output/' + outdir + f"/{model_dict[m_n]}/plots"
     if not os.path.exists(savedir):
         os.makedirs(savedir)
+    fig.tight_layout()
     plt.savefig(f'{savedir}/{filename}.png')
     plt.close(fig)
 
@@ -160,6 +174,8 @@ def plot_parameter_histograms(param_values, param_name, hist_file, thresh, model
                 ax.axvline(best_fit, color='tab:green', alpha = 0.4, linestyle=':')
     print(f"Mean of accepted values for parameter '{param_name}': {np.mean(param_values)}")
     print(f"Median of accepted values for parameter '{param_name}': {np.median(param_values)}")
+    print(f"Min of accepted values for parameter '{param_name}': {min(param_values)}")
+    print(f"Max of accepted values for parameter '{param_name}': {max(param_values)}")
     ax.legend()
     fig.tight_layout()
     fig.savefig(hist_file)
