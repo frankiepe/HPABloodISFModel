@@ -13,12 +13,10 @@ import os
 import sys
 top_level_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, top_level_dir)
-from matplotlib import pyplot as plt
 import pandas as pd
 import numpy as np
 import argparse
 from methods import model_dict, day_len
-import methods.plotting as plotting
 import methods.models as models
 import methods.classes as mc
 from methods import PARAMETER_BOUNDARIES as pb
@@ -113,6 +111,7 @@ def run_inference(m_n, d_n, num_inds, nreps, outdir, step, warmup, abcreps, days
 
         p = list(pars_sample.values())
         obj_i = f(p)
+        # Only accept if the simulation passed constraints (i.e. obj_i < 1e6)
         if obj_i < 1e6:
             if i % 50 == 0:
                 print(f"Iteration {i}")
@@ -130,15 +129,6 @@ def run_inference(m_n, d_n, num_inds, nreps, outdir, step, warmup, abcreps, days
     df = pd.DataFrame(sorted_p, columns=fitted_pars) 
     df.insert(0, "Obj", sorted_o)
     df.to_csv("output/" + outdir + f"/{model_dict[m_n]}/pars" + f"/all_pars_model{m_n}_dataID{d_n}.csv", index=False)
-
-    # Run the simulation
-    #result = dde_model.simulate(p_save, times, fitting=False, reject=False)
-
-    # Get CRH drive
-    #crh_drive = [dde_model.crh(t, t_s=p_save[-2], lambda_a=p_save[-4], lambda_s=p_save[-3], sigma=p_save[-1]) for t in times[int((day_len*warmup)/step):]]
-
-    # Plot the model output
-    #plotting.plot_model_output(m_n, result, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, outdir=outdir, filename=f'sample_output_{d_n}', days_to_keep=1, plot_data=True, d_n=d_n)
 
 if __name__ == "__main__":
     # read parsed variables

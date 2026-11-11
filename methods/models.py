@@ -1190,7 +1190,9 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
             result = filtered_output
 
         if (self.reject == True) and (reject == True):
-            crh = [self.crh(t, t_s=t_s, lambda_a=lambda_a, lambda_s=lambda_s, sigma=sigma) for t in self.times_fitting]
+            # Calculate CRH values at max/min times for the day (using derivative of CRH function)
+            t_maxmin = [t_s+(day_len*(k*np.pi-sigma*((-1)**k)))/(2*np.pi) for k in [1,2]]
+            crh = [self.crh(t, t_s=t_s, lambda_a=lambda_a, lambda_s=lambda_s, sigma=sigma) for t in t_maxmin]
             if fitting:
                 prop_day = (times[-1]-times[0])/day_len
                 if fail_flags:

@@ -285,22 +285,18 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
             F_tot = res.T[1]+res.T[3]
             E_tot = res.T[2]+res.T[4]
             if n == 0:
-                ax1.plot(times, F_tot, label='Total Cortisol', color='blue', alpha=0.1)
-                ax1.plot(times, res.T[1], label='Free Cortisol', color='green', alpha=0.1)
-                ax2.plot(times, E_tot, label='Total Cortisone', color='red', alpha=0.1)
-                ax2.plot(times, res.T[2], label='Free Cortisone', color='yellow', alpha=0.1)
-                ax3.plot(times, res.T[5], label='Free Cortisol', color='blue', alpha=0.1)
-                ax3.plot(times, res.T[6], label='Free Cortisone', color='red', alpha=0.1)
-                ax4.plot(times, res.T[0], label='ACTH', color='orange', alpha=0.1)
+                ax1.plot(times, F_tot, label='Total Cortisol', color='#E83151', alpha=0.1)
+                ax2.plot(times, E_tot, label='Total Cortisone', color='#6461A0', alpha=0.1)
+                ax3.plot(times, res.T[5], label='Free Cortisol', color='#E83151', alpha=0.1)
+                ax3.plot(times, res.T[6], label='Free Cortisone', color='#6461A0', alpha=0.1)
+                ax4.plot(times, res.T[0], label='ACTH', color='#FB8B24', alpha=0.1)
                 n+=1
             else:
-                ax1.plot(times, F_tot, color='blue', alpha=0.1)
-                ax1.plot(times, res.T[1], color='green', alpha=0.1)
-                ax2.plot(times, E_tot, color='red', alpha=0.1)
-                ax2.plot(times, res.T[2], color='yellow', alpha=0.1)
-                ax3.plot(times, res.T[5], color='blue', alpha=0.1)
-                ax3.plot(times, res.T[6], color='red', alpha=0.1)
-                ax4.plot(times, res.T[0], color='orange', alpha=0.1)
+                ax1.plot(times, F_tot, color='#E83151', alpha=0.1)
+                ax2.plot(times, E_tot, color='#6461A0', alpha=0.1)
+                ax3.plot(times, res.T[5], color='#E83151', alpha=0.1)
+                ax3.plot(times, res.T[6], color='#6461A0', alpha=0.1)
+                ax4.plot(times, res.T[0], color='#FB8B24', alpha=0.1)
         ax2.set_ylabel('nmol/L')
         ax3.set_ylabel('nmol/L')
         ax4.set_ylabel('pmol/L')
@@ -334,23 +330,21 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
         if m_n == '2':
             ax1.plot(timesBP, Cortisone, label='Cortisone data', color='red', marker='o')
     elif m_n in ['3a','3b','4','5','6']:
-        ax1.plot(timesBP, CORT, label='Total Cortisol data', color='blue', marker='o')
+        ax1.plot(timesBP, CORT, label='Total Cortisol data', color='#E83151', marker='o')
         if m_n in ['3a','3b']:
             ax1.plot(timesBP, Cortisone, label='Total Cortisone data', color='red', marker='o')
             ax2.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
         elif m_n in ['4','5','6']:
-            ax2.plot(timesBP, Cortisone, label='Total Cortisone data', color='red', marker='o')
-            ax3.plot(timesISF, mCORT, label='Free Cortisol data', color='blue', marker='o')
-            ax3.plot(timesISF, mCortisone, label='Free Cortisone data', color='red', marker='o')
-            ax4.plot(timesBP, ACTH, label='ACTH data', color='orange', marker='o')
-            ax3.set_ylim(0, 30)
+            ax2.plot(timesBP, Cortisone, label='Total Cortisone data', color='#6461A0', marker='o')
+            ax3.plot(timesISF, mCORT, label='Free Cortisol data', color='#E83151', marker='o', alpha=0.8)
+            ax3.plot(timesISF, mCortisone, label='Free Cortisone data', color='#6461A0', marker='o', alpha=0.8)
+            ax4.plot(timesBP, ACTH, label='ACTH data', color='#FB8B24', marker='o')
     for ax in axes:
         ax.set_xlim(list(times)[0], list(times)[-1])
         for i in range(days_to_keep):
             ax.axvline(x=day_len*i, color='gray', linestyle='--') 
         ax.legend()
 
-    ax1.set_ylim(0, 500)
     plt.suptitle('Corticosteroid and ACTH Levels Over Time')
     plt.savefig(m_traj_file)
     plt.close(fig)
