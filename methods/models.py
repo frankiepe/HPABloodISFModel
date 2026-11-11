@@ -1156,7 +1156,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         V_f_i = par_dict['V_f_i'] # Max. cortisol to cortisone rate in ISF (new param)
         V_e_i = par_dict['V_e_i'] # Max. cortisone to cortisol rate in ISF (new param)
         V_B = par_dict['V_B'] # Vascular distribution volume
-        V_I = par_dict['V_I'] # ISF distribution volume
+        V_I = par_dict['rBI']*V_B # ISF distribution volume
         tau = par_dict['tau'] # Feedback delay from CORT to ACTH
         alpha = par_dict['alpha'] # Maximal rate of ACTH-induced CORT production
 
