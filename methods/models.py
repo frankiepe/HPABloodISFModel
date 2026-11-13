@@ -1147,8 +1147,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         k_Eon = par_dict['k_Eon'] # E protein on-binding rate
         k_Eoff = par_dict['k_Ed']*k_Eon # E protein off-binding rate
         P_tot = par_dict['P_tot'] # Total protein concentration
-        k_BI_F = par_dict['k_BI_F'] # Cortisiol permeability constant
-        k_BI_E = par_dict['k_BI_E'] # Cortisone permeability constant
+        k_BI = par_dict['k_BI'] # Permeability constant
         m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
         m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
         V_f_b = par_dict['V_f_b'] # Max. cortisol to cortisone rate in BP
@@ -1168,7 +1167,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
 
         lags = [tau]
         p = (gamma_a, gamma_f_b, gamma_f_i, gamma_e_b, gamma_e_i, K_a, K_f, K_mfB, 
-             K_meB, K_mfI, K_meI, k_Fon, k_Foff, k_Eon, k_Eoff, P_tot, k_BI_F, k_BI_E, m_a, m_f, V_f_b,
+             K_meB, K_mfI, K_meI, k_Fon, k_Foff, k_Eon, k_Eoff, P_tot, k_BI, m_a, m_f, V_f_b,
              V_e_b, V_f_i, V_e_i, V_B, V_I, tau, alpha, lambda_a, lambda_s, t_s, sigma)
         
         # Define DDE problem and solve

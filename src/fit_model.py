@@ -170,9 +170,7 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
                         pints.LogTransformation(1),
                         pints.IdentityTransformation(1),
                         pints.LogTransformation(1),
-                        pints.IdentityTransformation(2),
-                        pints.LogTransformation(2),
-                        pints.IdentityTransformation(14),
+                        pints.IdentityTransformation(17),
                     )
     else:
         transform = pints.ComposedTransformation(
