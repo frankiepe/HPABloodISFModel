@@ -1138,8 +1138,6 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         gamma_e_i = par_dict['gamma_e_i'] # Cortisone degradation rate in ISF
         K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
         K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
-        K_mfB = par_dict['K_mfB'] # Cortisol conc. when F->E reaction rate is half V_f_b in BP
-        K_meB = par_dict['K_meB'] # Cortisone conc. when E->F reaction rate is half V_e_b in BP
         K_mfI = par_dict['K_mfI'] # Cortisol conc. when F->E reaction rate is half V_f_i in ISF (new param)
         K_meI = par_dict['K_meI'] # Cortisone conc. when E->F reaction rate is half V_e_i in ISF (new param)
         k_Fon = par_dict['k_Fon'] # F protein on-binding rate
@@ -1150,8 +1148,6 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         k_BI = par_dict['k_BI'] # Permeability constant
         m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
         m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
-        V_f_b = par_dict['V_f_b'] # Max. cortisol to cortisone rate in BP
-        V_e_b = par_dict['V_e_b'] # Max. cortisone to cortisol rate in BP
         V_f_i = par_dict['V_f_i'] # Max. cortisol to cortisone rate in ISF (new param)
         V_e_i = par_dict['V_e_i'] # Max. cortisone to cortisol rate in ISF (new param)
         V_B = par_dict['V_B'] # Vascular distribution volume
@@ -1166,9 +1162,8 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         sigma = par_dict['sigma'] # Asymmetry of circadian drive
 
         lags = [tau]
-        p = (gamma_a, gamma_f_b, gamma_f_i, gamma_e_b, gamma_e_i, K_a, K_f, K_mfB, 
-             K_meB, K_mfI, K_meI, k_Fon, k_Foff, k_Eon, k_Eoff, P_tot, k_BI, m_a, m_f, V_f_b,
-             V_e_b, V_f_i, V_e_i, V_B, V_I, tau, alpha, lambda_a, lambda_s, t_s, sigma)
+        p = (gamma_a, gamma_f_b, gamma_f_i, gamma_e_b, gamma_e_i, K_a, K_f, K_mfI, K_meI, k_Fon, 
+             k_Foff, k_Eon, k_Eoff, P_tot, k_BI, m_a, m_f, V_f_i, V_e_i, V_B, V_I, tau, alpha, lambda_a, lambda_s, t_s, sigma)
         
         # Define DDE problem and solve
         try:
