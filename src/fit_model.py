@@ -165,12 +165,14 @@ def get_pars(m_n, d_n, warmup, step, outdir, fixed, rseed, days_to_keep=1):
     elif m_n == '5':
         transform = pints.ComposedTransformation(
                         pints.IdentityTransformation(1),
-                        pints.LogTransformation(4),
+                        pints.LogTransformation(2),
                         pints.IdentityTransformation(4),
                         pints.LogTransformation(1),
                         pints.IdentityTransformation(1),
                         pints.LogTransformation(1),
-                        pints.IdentityTransformation(15),
+                        pints.IdentityTransformation(5),
+                        pints.LogTransformation(2),
+                        pints.IdentityTransformation(10),
                     )
     else:
         transform = pints.ComposedTransformation(
