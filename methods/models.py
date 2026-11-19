@@ -1136,6 +1136,8 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         gamma_e_i = par_dict['gamma_e_i'] # Cortisone degradation rate in ISF
         K_a = par_dict['K_a'] # ACTH receptor half-saturation constant
         K_f = par_dict['K_f'] # Cortisol receptor half-saturation constant
+        K_mfB = par_dict['K_mfB'] # Cortisol conc. when F->E reaction rate is half V_f_b in BP
+        K_meB = par_dict['K_meB'] # Cortisone conc. when E->F reaction rate is half V_e_b in BP
         K_mfI = par_dict['K_mfI'] # Cortisol conc. when F->E reaction rate is half V_f_i in ISF (new param)
         K_meI = par_dict['K_meI'] # Cortisone conc. when E->F reaction rate is half V_e_i in ISF (new param)
         k_Fon = par_dict['k_Fon'] # F protein on-binding rate
@@ -1146,8 +1148,8 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         k_BI = par_dict['k_BI'] # Permeability constant
         m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
         m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
-        V_f_b = par_dict['V_f_b'] # Linear cortisol to cortisone rate in BP
-        V_e_b = par_dict['V_e_b'] # Linear cortisone to cortisol rate in BP
+        V_f_b = par_dict['V_f_b'] # Max. cortisol to cortisone rate in BP
+        V_e_b = par_dict['V_e_b'] # Max. cortisone to cortisol rate in BP
         V_f_i = par_dict['V_f_i'] # Max. cortisol to cortisone rate in ISF (new param)
         V_e_i = par_dict['V_e_i'] # Max. cortisone to cortisol rate in ISF (new param)
         V_B = par_dict['V_B'] # Vascular distribution volume
@@ -1162,7 +1164,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         sigma = par_dict['sigma'] # Asymmetry of circadian drive
 
         lags = [tau]
-        p = (gamma_a, gamma_f_i, gamma_e_i, K_a, K_f, K_mfI, K_meI, k_Fon, k_Foff, k_Eon, k_Eoff, P_tot, k_BI, m_a, m_f, 
+        p = (gamma_a, gamma_f_i, gamma_e_i, K_a, K_f, K_mfB, K_meB, K_mfI, K_meI, k_Fon, k_Foff, k_Eon, k_Eoff, P_tot, k_BI, m_a, m_f, 
              V_f_b, V_e_b, V_f_i, V_e_i, V_B, V_I, tau, alpha, lambda_a, lambda_s, t_s, sigma)
         
         # Define DDE problem and solve
@@ -1242,6 +1244,14 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         signal_times_CORT = times[signals_CORT]
         signal_times_cortisone = times[signals_cortisone]
         max_crh=max(crh)
+        CORT_ratio = result[:, 1]/total_CORT
+        cortisone_ratio = result[:, 2]/total_cortisone
+        CORT_ratio_max = CORT_ratio.max()
+        CORT_ratio_min = CORT_ratio.min()
+        cortisone_ratio_max = cortisone_ratio.max()
+        cortisone_ratio_min = cortisone_ratio.min()
+        low_bound = int(prop_day*lower_bound)
+        upp_bound = int(prop_day*upper_bound)
         if len(signal_times_CORT)>0:
             period_CORT = np.append(np.diff(signal_times_CORT), day_len-signal_times_CORT[-1]+signal_times_CORT[0])
         if len(signal_times_cortisone)>0:
@@ -1251,15 +1261,15 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
                                 'CORT_ratio': False, 'cortisone_ratio': False, 'CORT_period_min': False, 
                                 'CORT_period_max': False, 'cortisone_period_min': False, 'cortisone_period_max': False,
                                 'CORT_max': False, 'cortisone_max': False, 'ACTH_max': False, 'max_CRH': False}
-            if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
+            if not (low_bound <= len(signals_CORT) <= upp_bound):
                 fail_flags_dict['CORT_peaks'] = True
-            if not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
+            if not (low_bound <= len(signals_ACTH) <= upp_bound):
                 fail_flags_dict['ACTH_peaks'] = True
-            if not (int(prop_day*lower_bound) <= len(signals_cortisone) <= int(prop_day*upper_bound)):
+            if not (low_bound <= len(signals_cortisone) <= upp_bound):
                 fail_flags_dict['cortisone_peaks'] = True
-            if (result[:, 1]/total_CORT).max() > 0.1:
+            if CORT_ratio_max > 0.1 or CORT_ratio_min < 0.02:
                 fail_flags_dict['CORT_ratio'] = True
-            if (result[:, 2]/total_cortisone).max() > 0.4:
+            if cortisone_ratio_max > 0.25 or cortisone_ratio_min < 0.1:
                 fail_flags_dict['cortisone_ratio'] = True
             if len(signal_times_CORT)>0:
                 if min(period_CORT) < 60:
@@ -1286,13 +1296,13 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
             if max_crh > 200:
                 fail_flags_dict['max_CRH'] = True
             return fail_flags_dict
-        if not (int(prop_day*lower_bound) <= len(signals_CORT) <= int(prop_day*upper_bound)):
+        if not (low_bound <= len(signals_CORT) <= upp_bound):
             return True
-        elif not (int(prop_day*lower_bound) <= len(signals_ACTH) <= int(prop_day*upper_bound)):
+        elif not (low_bound <= len(signals_ACTH) <= upp_bound):
             return True
-        elif not (int(prop_day*lower_bound) <= len(signals_cortisone) <= int(prop_day*upper_bound)):
+        elif not (low_bound <= len(signals_cortisone) <= upp_bound):
             return True
-        elif (result[:, 1]/total_CORT).max() > 0.1 or (result[:, 2]/total_cortisone).max() > 0.4:
+        elif CORT_ratio_max > 0.1 or CORT_ratio_min < 0.02 or cortisone_ratio_max > 0.25 or cortisone_ratio_min < 0.1:
             return True
         elif min(period_CORT) < 60 or max(period_CORT) > 480 or min(period_cortisone) < 60 or max(period_cortisone) > 480:
             return True
