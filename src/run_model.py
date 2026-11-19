@@ -17,18 +17,22 @@ parser.add_argument('-m', '--model', type = str, help='Select model for optimisa
 parser.add_argument('-s', '--step', type=float, default=1, help='Step size for dde solver')
 parser.add_argument('-w', '--warmup', type = int, default=5, help='No. of days of warmup (to reach steady state)')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
+parser.add_argument('-f', '--file', type=str, help='JSON file name with parameters')
 args = parser.parse_args()
 
-def run_model(m_n, step, warmup, days_to_keep=1):
-    pars_file = f'configs/{model_dict[m_n]}/test_parameters.json'
+def run_model(m_n, step, warmup, filename, days_to_keep=1):
+    pars_file_default = f'configs/{model_dict[m_n]}/test_parameters.json'
+    pars_file_fit = f'output/fit_models/{model_dict[m_n]}/{filename}.json'
 
-    # Load config
-    with open(pars_file, 'r') as f:
-        config = json.load(f)
+    # Load configs
+    with open(pars_file_default, 'r') as f:
+        config_default = json.load(f)
+    with open(pars_file_fit, 'r') as f:
+        config_fit = json.load(f)
 
-    # Get parameters from config
-    pars = config.get('parameters', {})
-    ics = config.get('initial_conditions', {})
+    # Get parameters from configs
+    pars = config_fit.get('parameters', {})
+    ics = config_default.get('initial_conditions', {})
     num_days = warmup + days_to_keep
 
     # Create time array
@@ -68,12 +72,13 @@ def run_model(m_n, step, warmup, days_to_keep=1):
 
 if __name__ == "__main__":
     m_n = args.model
-    step = args.step # must be sufficiently small to ensure dde solver converges (i.e. <=0.1)
+    step = args.step
     warmup = args.warmup
     outdir = args.outdir
+    filename = args.file
     if not os.path.exists(f'output/{outdir}'):
         os.makedirs(f'output/{outdir}')
         os.makedirs(f'output/{outdir}/{model_dict[m_n]}/plots')
 
-    res, times, crh_drive = run_model(m_n, step, warmup)
-    plotting.plot_model_output(m_n, res, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, outdir=outdir, filename=f'model_output', days_to_keep=1)
+    res, times, crh_drive = run_model(m_n, step, warmup, filename)
+    plotting.plot_model_output(m_n, res, times[int((day_len*warmup)/step):]-day_len*warmup, crh_drive, outdir=outdir, filename=f'run_{filename}', days_to_keep=1)

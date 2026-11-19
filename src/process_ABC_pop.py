@@ -10,16 +10,18 @@ import methods.plotting as plotting
 from methods import model_dict
 import seaborn as sns
 from matplotlib import pyplot as plt
+import re
 
 parser = argparse.ArgumentParser(description='Fit models to data.')
 parser.add_argument('-m', '--model', type = str, help='Select model for optimisation: ' \
                     '1: BaseHPAModel, 2: HPAModelFEInter, 3a: HPAModelFEInterCBGAlbSimple, ' \
                     '3b: HPAModelFEInterCBGAlb, 4: HPAModelFEInterCBGAlbBloodISF, 5: HPAModelFEInterBothCBGAlbBloodISF, ' \
-                    '6: HPAModelCRHSupp')
+                    '6: HPAModelFEInterISFOnlyCBGAlbBloodISF')
 parser.add_argument('-n', '--ninds', type=int, help='Number of datasets fitted')
 parser.add_argument('-o', '--outdir', type=str, help='Directory for plotting output')
 parser.add_argument('-f', '--fixed', type=str, nargs='*', help='Parameters to fix (i.e. not fit)')
 parser.add_argument('-t', '--thresh', type = int, default=2000, help='Objective threshold for ABC filter')
+parser.add_argument('-p', action='store_true', help='If true, plot best fit parameters on histograms')
 args = parser.parse_args()
 
 def process_ABC_pop(m_n, num_inds, outdir, fixed, thresh):
@@ -51,6 +53,22 @@ def process_ABC_pop(m_n, num_inds, outdir, fixed, thresh):
 
     print(f"Accepted sets: {len(pars_accept)}")
 
+    df = []
+    if args.p:
+        best_pars = []
+        reps=10
+        for i in range(1, num_inds+1):
+            min_obj = 1e9
+            for j in range(1, reps+1):
+                fit = pd.read_csv(f"output/fit_models/{model_dict[m_n]}/fits/fit_dataid{i}_seed{j}.csv")
+                score = fit['score'][0]
+                if score < min_obj:
+                    vals = np.fromstring(fit['values'][0].strip("[]"), sep=" ")
+                    min_obj = score
+            best_pars.append(vals)
+        fitted_pars = re.findall(r"'([^']*)'", fit['fitted_pars'][0])
+        df = pd.DataFrame(best_pars, columns=fitted_pars)
+
     # Plot histograms of accepted parameters and correlation plot
     if len(pars_accept) > 0:
         for i in np.arange(0, len(init_pars.keys())):
@@ -62,7 +80,7 @@ def process_ABC_pop(m_n, num_inds, outdir, fixed, thresh):
             else:
                 hist_file = f"hist_{param_name}_model{m_n}_pop.png"
 
-            plotting.plot_parameter_histograms(param_values, param_name, hist_file, thresh)
+            plotting.plot_parameter_histograms(param_values, param_name, hist_file, thresh, m_n, plot_best_fit=args.p, df=df)
             print(f"Saved histogram for '{param_name}' to: {hist_file}")
 
         df = pd.DataFrame(pars_accept, columns=init_pars.keys())

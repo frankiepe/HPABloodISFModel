@@ -117,7 +117,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, reps, days_to_keep=1):
         problem1 = pints.MultiOutputProblem(full_model1, timesBP, np.array([ACTH, CORT, Cortisone]).T)
         problem2 = pints.MultiOutputProblem(full_model2, timesISF, np.array([mCORT, mCortisone]).T)
         f1 = pints.MeanSquaredError(problem1, weights=[np.mean(CORT)/np.mean(ACTH), 1, np.mean(CORT)/np.mean(Cortisone)])
-        f2 = pints.MeanSquaredError(problem2)
+        f2 = pints.MeanSquaredError(problem2, weights=[np.mean(CORT)/np.mean(mCORT), np.mean(CORT)/np.mean(mCortisone)])
         f = pints.SumOfErrors([f1,f2])
 
     # Set up model boundaries
@@ -132,7 +132,7 @@ def run_ABC(m_n, d_n, warmup, step, outdir, fixed, reps, days_to_keep=1):
     while i < reps:
         q1 = bounds.sample()
         obj_i = f(list(q1[0]))
-        if obj_i < 1e8:
+        if obj_i < 1e9:
             if i % 10 == 0:
                 print(f"Iteration {i}/{reps}")
             pars_all[i] = list(q1[0])
