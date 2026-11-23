@@ -1149,9 +1149,9 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         m_a = par_dict['m_a'] # Hill coefficient for ACTH-driven CORT production
         m_f = par_dict['m_f'] # Hill coefficient for CORT feedback
         V_f_b = par_dict['V_f_b'] # Max. cortisol to cortisone rate in BP
-        V_e_b = par_dict['V_e_b'] # Max. cortisone to cortisol rate in BP
+        V_e_b = par_dict['rV_e_b']*V_f_b # Max. cortisone to cortisol rate in BP
         V_f_i = par_dict['V_f_i'] # Max. cortisol to cortisone rate in ISF (new param)
-        V_e_i = par_dict['V_e_i'] # Max. cortisone to cortisol rate in ISF (new param)
+        V_e_i = par_dict['rV_e_i']*V_f_i # Max. cortisone to cortisol rate in ISF (new param)
         V_B = par_dict['V_B'] # Vascular distribution volume
         V_I = par_dict['rBI']*V_B # ISF distribution volume
         tau = par_dict['tau'] # Feedback delay from CORT to ACTH
