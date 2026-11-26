@@ -70,11 +70,12 @@ class ModelBloodFEInterCBGAlb(pints.ForwardModel):
         return np.transpose([res[:, 0], res[:, 1]+res[:, 3]+res[:, 4], res[:, 2]+res[:, 5]+res[:, 6]])
 
 class ModelISFFEInterCBGAlb(pints.ForwardModel):
-    def __init__(self, model, parameters, times):
+    def __init__(self, model, parameters, times, data_max_time = None):
         self._model = model
         self.n_parameters_value = len(parameters)
         self._parameters = parameters
         self._times = times
+        self._data_max_time = data_max_time
 
     def n_outputs(self):
         return 2     
@@ -83,5 +84,5 @@ class ModelISFFEInterCBGAlb(pints.ForwardModel):
         return self.n_parameters_value
 
     def simulate(self, parameters, times):
-        res = self._model.simulate(parameters, times)
+        res = self._model.simulate(parameters, times, data_max_time=self._data_max_time)
         return np.transpose([res[:, 5], res[:, 6]])

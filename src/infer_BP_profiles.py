@@ -13,6 +13,8 @@
 ### to sample parameters in the initilisation stage of optimisation and then 
 ### running CMA-ES to fit the model parameters to the ISF data ONLY.
 
+### Update (25-11-2026): Will try fitting t_s separately after simulation (line up cortisol data and simulation peaks)
+
 import os
 import sys
 top_level_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -92,10 +94,19 @@ def run_inference(m_n, d_n, num_inds, nreps, outdir, step, warmup, abcreps, rsee
                         num_days=num_days, days_to_keep=days_to_keep, step=step)
 
     # Get ISF data and define objective
-    timesISF, _, _, _, _, mCORT, mCortisone = dp.get_data(d_n)
+    timesISF, timesBP, _, _, _, mCORT, mCortisone = dp.get_data(d_n)
+    sBP = pd.to_datetime(pd.Series(timesBP))
+    startBP = ((sBP - sBP.iloc[0].floor('D')).dt.total_seconds()[0] / 60)
     sISF = pd.to_datetime(pd.Series(timesISF))
+    startISF = ((sISF - sISF.iloc[0].floor('D')).dt.total_seconds()[0] / 60)
     timesISF = (sISF - sISF.iloc[0]).dt.total_seconds() / 60
-    full_model = mc.ModelISFFEInterCBGAlb(dde_model, pars_init, times)
+
+    # Align BP and ISF datasets
+    if startBP < startISF:
+        timesISF = timesISF+startISF-startBP
+
+    data_max_time = timesISF[np.argmax(mCORT)]
+    full_model = mc.ModelISFFEInterCBGAlb(dde_model, pars_init, times, data_max_time = data_max_time)
     problem = pints.MultiOutputProblem(full_model, timesISF, np.array([mCORT, mCortisone]).T)
     f = pints.MeanSquaredError(problem)
 

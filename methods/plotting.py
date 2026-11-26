@@ -183,6 +183,23 @@ def plot_parameter_histograms(param_values, param_name, hist_file, thresh, model
 
 def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n, d_n, m_traj_file, days_to_keep=1, plot_rejected=False):
 
+    # Load data
+    timesISF, timesBP, CORT, Cortisone, ACTH, mCORT, mCortisone = dp.get_data(d_n)
+    sBP = pd.to_datetime(pd.Series(timesBP))
+    startBP = ((sBP - sBP.iloc[0].floor('D')).dt.total_seconds()[0] / 60)
+    sISF = pd.to_datetime(pd.Series(timesISF))
+    startISF = ((sISF - sISF.iloc[0].floor('D')).dt.total_seconds()[0] / 60)
+    timesBP = (sBP - sBP.iloc[0]).dt.total_seconds() / 60
+    timesISF = (sISF - sISF.iloc[0]).dt.total_seconds() / 60
+
+    # Align BP and ISF datasets
+    if startBP < startISF:
+        timesISF = timesISF+startISF-startBP
+    elif startISF < startBP:
+        timesBP = timesBP+startBP-startISF
+
+    data_max_time = timesISF[np.argmax(mCORT)]
+
     if m_n in ['1', '2', '3a', '3b']:
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
         axes = [ax1, ax2]
@@ -269,7 +286,7 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
         axes = [ax1, ax2, ax3, ax4]
         if plot_rejected:
             for par_i in pars_reject:
-                res = dde_model.simulate(list(par_i), times, fitting=False, reject=False)
+                res = dde_model.simulate(list(par_i), times, fitting=False, reject=False, data_max_time=data_max_time)
                 F_tot = res.T[1]+res.T[3]
                 E_tot = res.T[2]+res.T[4]
                 ax1.plot(times, F_tot, color='grey', alpha=0.05)
@@ -281,7 +298,7 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
                 ax4.plot(times, res.T[0], color='grey', alpha=0.05)
         n = 0
         for par_i in pars_accept:
-            res = dde_model.simulate(list(par_i), times, fitting=False, reject=False)
+            res = dde_model.simulate(list(par_i), times, fitting=False, reject=False, data_max_time=data_max_time)
             F_tot = res.T[1]+res.T[3]
             E_tot = res.T[2]+res.T[4]
             if n == 0:
@@ -309,20 +326,6 @@ def plot_model_trajectories_ABC(dde_model, times, pars_accept, pars_reject, m_n,
     ax1.set_ylabel('nmol/L')
     
     print(f"Plotting data for individual #{d_n}...")
-    # Load data
-    timesISF, timesBP, CORT, Cortisone, ACTH, mCORT, mCortisone = dp.get_data(d_n)
-    sBP = pd.to_datetime(pd.Series(timesBP))
-    startBP = ((sBP - sBP.iloc[0].floor('D')).dt.total_seconds()[0] / 60)
-    sISF = pd.to_datetime(pd.Series(timesISF))
-    startISF = ((sISF - sISF.iloc[0].floor('D')).dt.total_seconds()[0] / 60)
-    timesBP = (sBP - sBP.iloc[0]).dt.total_seconds() / 60
-    timesISF = (sISF - sISF.iloc[0]).dt.total_seconds() / 60
-
-    # Align BP and ISF datasets
-    if startBP < startISF:
-        timesISF = timesISF+startISF-startBP
-    elif startISF < startBP:
-        timesBP = timesBP+startBP-startISF
     
     if m_n in ['1','2']:
         ax1.plot(timesBP, CORT, label='Cortisol data', color='blue', marker='o')

@@ -14,12 +14,24 @@ DiffEq = jl.seval("DifferentialEquations")
 jl.seval("""
 using .DelayDiffEq, .DifferentialEquations
 
-function solve_dde_fast(prob, new_p, lags, alg, reltol, abstol, first_saved_idx)
+function solve_dde_fast(prob, new_p, lags, alg, reltol, abstol, first_saved_idx, data_max_time=nothing, step=nothing, day_len=nothing)
     p_jl = Vector{Float64}(collect(new_p))
     lags_jl = Vector{Float64}(collect(lags))
     new_prob = remake(prob, p=p_jl, constant_lags=lags_jl)
     sol = solve(new_prob, alg, reltol=reltol, abstol=abstol)
-    return permutedims(Array(sol[:, first_saved_idx:end]))
+    if isnothing(data_max_time)
+        return permutedims(Array(sol[:, first_saved_idx:end]))
+    else
+        model_max_idx = argmax(sol[6, first_saved_idx:end])
+        model_max_time = (model_max_idx-1)*step
+        diff_idx = Int((model_max_time - data_max_time)/step)
+        if diff_idx > 0
+            return permutedims(Array(sol[:, (first_saved_idx-diff_idx):(end-diff_idx)])), diff_idx
+        else
+            diff_idx = Int(diff_idx + (day_len/step))
+            return permutedims(Array(sol[:, (first_saved_idx-diff_idx):(end-diff_idx)])), diff_idx
+        end
+    end
 end
 """)
 
@@ -1117,7 +1129,7 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
                                 + sigma * math.cos(2*math.pi * ((t - t_s) / T_c)))
         )
 
-    def simulate(self, parameters, times, fitting=True, reject=True, fail_flags=False):
+    def simulate(self, parameters, times, fitting=True, reject=True, fail_flags=False, data_max_time=None):
         
         # Assign parameters
         for i, key in enumerate(self.param_keys):
@@ -1169,15 +1181,27 @@ class HPAModelFEInterBothCBGAlbBloodISF(pints.ForwardModel):
         
         # Define DDE problem and solve
         try:
-            result = jl.solve_dde_fast(
-                self.base_prob, p, lags, self.alg,
-                self.reltol, self.abstol, self.truncate_idx + 1
-            )
+            if data_max_time is None:
+                result = jl.solve_dde_fast(
+                    self.base_prob, p, lags, self.alg,
+                    self.reltol, self.abstol, self.truncate_idx + 1
+                )
+                diff_idx = 0
+            else:
+                result, diff_idx = jl.solve_dde_fast(
+                    self.base_prob, p, lags, self.alg,
+                    self.reltol, self.abstol, self.truncate_idx + 1, data_max_time, self.step, day_len
+                )
+                t_s = t_s + diff_idx*self.step
         except JuliaError:
+            diff_idx = 0
             result = np.full((len(self.times) - self.truncate_idx, len(self.init_conds)), 5000)
         result = np.asarray(result)
 
         if fitting:
+            if diff_idx != 0:
+                self.times_fitting = self.times[(self.truncate_idx-diff_idx):] - self.times[self.truncate_idx-diff_idx]
+
             # Find nearest indices
             indices = np.searchsorted(self.times_fitting, times)
 
